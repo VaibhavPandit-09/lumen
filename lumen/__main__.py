@@ -19,9 +19,12 @@ from lumen.service.shortcuts import get_shortcut_setup_instructions
 
 def cli_search(query: str, as_json: bool = False) -> None:
     """Executes a search via CLI without launching GUI."""
+    from lumen.providers.actions import CustomActionsProvider
     from lumen.providers.applications import ApplicationProvider
     from lumen.providers.calculator import CalculatorProvider
     from lumen.providers.commands import CommandProvider
+    from lumen.providers.conversions import ConversionsProvider
+    from lumen.providers.currency import CurrencyProvider
     from lumen.providers.krunner import KRunnerProvider
     from lumen.providers.locations import LocationsProvider
     from lumen.providers.system_actions import SystemActionsProvider
@@ -29,6 +32,9 @@ def cli_search(query: str, as_json: bool = False) -> None:
     config = LumenConfig().load()
     providers = [
         CalculatorProvider(enabled=config.providers.get("calculator", True)),
+        ConversionsProvider(enabled=config.providers.get("conversions", True)),
+        CurrencyProvider(enabled=config.providers.get("currency", True)),
+        CustomActionsProvider(actions_dir=config.actions_dir, enabled=config.providers.get("actions", True)),
         CommandProvider(commands=config.commands, enabled=config.providers.get("commands", True)),
         ApplicationProvider(hidden_applications=config.hidden_applications, enabled=config.providers.get("applications", True)),
         SystemActionsProvider(enabled=config.providers.get("system_actions", True)),
@@ -96,6 +102,26 @@ def main() -> None:
     search_p.add_argument("query", type=str, help="Search query string")
     search_p.add_argument("--json", action="store_true", help="Output results as JSON")
 
+    # Actions CLI
+    actions_p = subparsers.add_parser("actions", help="Inspect, validate, and run custom actions")
+    actions_sub = actions_p.add_subparsers(dest="actions_action", help="Action commands")
+    
+    act_list_p = actions_sub.add_parser("list", help="List all discovered custom actions")
+    act_list_p.add_argument("--json", action="store_true", help="Output actions as JSON")
+
+    act_val_p = actions_sub.add_parser("validate", help="Validate all custom actions on disk")
+    act_val_p.add_argument("--json", action="store_true", help="Output validation results as JSON")
+
+    act_info_p = actions_sub.add_parser("info", help="Display details for a specific action")
+    act_info_p.add_argument("id", type=str, help="Action ID")
+    act_info_p.add_argument("--json", action="store_true", help="Output info as JSON")
+
+    act_run_p = actions_sub.add_parser("run", help="Run a custom action from the CLI")
+    act_run_p.add_argument("id", type=str, help="Action ID")
+    act_run_p.add_argument("args", nargs="*", help="Optional arguments for the action")
+
+    actions_sub.add_parser("reload", help="Notify running daemon to reload actions from disk")
+
     # Config CLI
     config_p = subparsers.add_parser("config", help="Manage Lumen configuration")
     config_p.add_argument("action", choices=["path", "show", "edit", "add-command"], help="Config action")
@@ -112,6 +138,110 @@ def main() -> None:
         debug("CLI", "Verbose debug logging enabled.")
 
     # Handle subcommands
+    if args.subcommand == "actions":
+        from lumen.core.actions.discovery import ActionScanner
+        from lumen.core.actions.executor import ActionContext, ActionExecutor
+        from lumen.core.actions.validator import ActionValidator
+
+        cfg = LumenConfig().load()
+        scanner = ActionScanner(cfg.actions_dir)
+        actions = scanner.scan()
+
+        if args.actions_action == "list":
+            if args.json:
+                out = [a.to_dict() for a in actions]
+                print(json.dumps(out, indent=2))
+            else:
+                print(f"Discovered Custom Actions ({len(actions)} total in {scanner.get_actions_dir()}):")
+                print("=" * 60)
+                if not actions:
+                    print("No custom actions found. Add manifests to ~/.config/lumen/actions/")
+                for a in actions:
+                    conf = " [requires confirmation]" if a.confirm else ""
+                    print(f"• {a.name} (id: {a.id}){conf}")
+                    if a.description:
+                        print(f"  {a.description}")
+                print("=" * 60)
+            sys.exit(0)
+
+        elif args.actions_action == "validate":
+            issues = ActionValidator.validate_action_collection(actions)
+            if args.json:
+                out = [
+                    {
+                        "severity": i.severity.value,
+                        "field": i.field,
+                        "message": i.message,
+                    }
+                    for i in issues
+                ]
+                print(json.dumps(out, indent=2))
+            else:
+                print(f"Validating Custom Actions in {scanner.get_actions_dir()}:")
+                print("=" * 60)
+                if not issues:
+                    print("✓ All custom action manifests are valid.")
+                else:
+                    for i in issues:
+                        prefix = "✗ ERROR" if i.severity.value == "error" else "⚠️ WARN "
+                        field_info = f" [{i.field}]" if i.field else ""
+                        print(f"{prefix}{field_info}: {i.message}")
+                print("=" * 60)
+            sys.exit(1 if any(i.severity.value == "error" for i in issues) else 0)
+
+        elif args.actions_action == "info":
+            found = next((a for a in actions if a.id == args.id), None)
+            if not found:
+                if args.json:
+                    print(json.dumps({"error": f"Action '{args.id}' not found"}, indent=2))
+                else:
+                    print(f"Error: Action '{args.id}' not found in {scanner.get_actions_dir()}")
+                sys.exit(1)
+
+            if args.json:
+                print(json.dumps(found.to_dict(), indent=2))
+            else:
+                print(f"Action: {found.name} ({found.id})")
+                print("=" * 60)
+                print(f"Description:   {found.description}")
+                print(f"Category:      {found.category}")
+                print(f"Icon:          {found.icon}")
+                print(f"Executable:    {found.exec}")
+                print(f"Working Dir:   {found.cwd or 'Default'}")
+                print(f"Terminal:      {found.terminal}")
+                print(f"Confirmation:  {found.confirm}")
+                print(f"Timeout:       {found.timeout_seconds}s")
+                print(f"Source Manifest: {found.source_path}")
+                if found.args_schema:
+                    print("Arguments:")
+                    for arg in found.args_schema:
+                        req = " (required)" if arg.required else ""
+                        print(f"  • {arg.name}{req}: {arg.description}")
+                print("=" * 60)
+            sys.exit(0)
+
+        elif args.actions_action == "run":
+            found = next((a for a in actions if a.id == args.id), None)
+            if not found:
+                print(f"Error: Action '{args.id}' not found")
+                sys.exit(1)
+            ctx = ActionContext(action_id=found.id)
+            res = ActionExecutor.execute(found, context=ctx)
+            if res.stdout:
+                print(res.stdout)
+            if res.stderr:
+                print(res.stderr, file=sys.stderr)
+            sys.exit(res.exit_code)
+
+        elif args.actions_action == "reload":
+            send_ipc_command("refresh")
+            print("Notified running Lumen daemon to reload actions.")
+            sys.exit(0)
+
+        else:
+            actions_p.print_help()
+            sys.exit(0)
+
     if args.subcommand == "toggle":
         if not send_ipc_command("toggle"):
             # Start new instance and show
