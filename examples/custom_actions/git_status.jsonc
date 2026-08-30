@@ -1,0 +1,13 @@
+{
+  // Custom Action: Git Working Tree Status
+  "id": "git-status",
+  "name": "Git Status (Workspace)",
+  "description": "Show status of current git workspace",
+  "category": "Development",
+  "icon": "vcs-git",
+  "keywords": ["git", "status", "vcs", "branch", "diff"],
+  "exec": ["git", "status"],
+  "terminal": true,
+  "confirm": false,
+  "timeout_seconds": 10
+}

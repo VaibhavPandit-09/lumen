@@ -1,0 +1,14 @@
+{
+  // Custom Action: Docker Prune Stopped Containers (Requires Confirmation)
+  "id": "docker-clean-containers",
+  "name": "Docker Prune Stopped Containers",
+  "description": "Removes all stopped Docker containers",
+  "category": "Development",
+  "icon": "docker",
+  "keywords": ["docker", "prune", "clean", "containers"],
+  "exec": ["docker", "container", "prune", "-f"],
+  "terminal": false,
+  "confirm": true,
+  "confirm_message": "Prune all stopped Docker containers?",
+  "timeout_seconds": 30
+}

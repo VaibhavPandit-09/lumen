@@ -1,0 +1,13 @@
+{
+  // Custom Action: Inspect System Memory & Resources
+  "id": "system-info",
+  "name": "System Resource Monitor",
+  "description": "Launch system activity monitor / info",
+  "category": "System",
+  "icon": "utilities-system-monitor",
+  "keywords": ["ram", "cpu", "memory", "stats", "hardware"],
+  "exec": ["plasma-systemmonitor"],
+  "terminal": false,
+  "confirm": false,
+  "timeout_seconds": 10
+}

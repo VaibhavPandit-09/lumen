@@ -1,0 +1,13 @@
+{
+  // Custom Action: Open Development Workspace
+  "id": "workspace-open",
+  "name": "Open Development Projects",
+  "description": "Open development directory in file manager",
+  "category": "Development",
+  "icon": "folder-development",
+  "keywords": ["projects", "code", "dev", "workspace", "folder"],
+  "exec": ["xdg-open", "~/workspace"],
+  "terminal": false,
+  "confirm": false,
+  "timeout_seconds": 5
+}
