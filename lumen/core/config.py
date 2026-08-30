@@ -99,6 +99,12 @@ DEFAULT_CONFIG_JSONC = """// Lumen Main Configuration
   // Display category badges in search result rows
   "show_badges": true,
 
+  // Enable subtle window entry/dismissal animations
+  "enable_animations": true,
+
+  // Animation duration in milliseconds (100-180ms recommended)
+  "animation_duration_ms": 120,
+
   // Enable/disable individual search providers
   "providers": {
     "applications": true,
@@ -108,7 +114,8 @@ DEFAULT_CONFIG_JSONC = """// Lumen Main Configuration
     "calculator": true,
     "recent_files": true,
     "clipboard": true,
-    "web_search": true
+    "web_search": true,
+    "krunner": true
   },
 
   // List of .desktop application IDs or names to hide from search results
@@ -186,6 +193,8 @@ class LumenConfig:
     max_results: int = 9
     opacity: float = 0.98
     show_badges: bool = True
+    enable_animations: bool = True
+    animation_duration_ms: int = 120
     providers: Dict[str, bool] = field(
         default_factory=lambda: {
             "applications": True,
@@ -196,6 +205,7 @@ class LumenConfig:
             "recent_files": True,
             "clipboard": True,
             "web_search": True,
+            "krunner": True,
         }
     )
     hidden_applications: List[str] = field(default_factory=list)
@@ -263,6 +273,8 @@ class LumenConfig:
                 self.max_results = int(data.get("max_results", self.max_results))
                 self.opacity = float(data.get("opacity", self.opacity))
                 self.show_badges = bool(data.get("show_badges", self.show_badges))
+                self.enable_animations = bool(data.get("enable_animations", self.enable_animations))
+                self.animation_duration_ms = int(data.get("animation_duration_ms", self.animation_duration_ms))
                 if isinstance(data.get("providers"), dict):
                     self.providers.update(data["providers"])
                 if isinstance(data.get("hidden_applications"), list):

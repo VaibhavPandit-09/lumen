@@ -18,6 +18,7 @@ class ItemCategory(str, Enum):
     RECENT = "Recent Files"
     CLIPBOARD = "Clipboard"
     WEB = "Web Search"
+    KRUNNER = "KRunner"
 
 
 @dataclass
@@ -35,6 +36,9 @@ class SearchResult:
     keywords: List[str] = field(default_factory=list)
     shortcut_hint: str = ""
     context: Dict[str, Any] = field(default_factory=dict)
+    origin_provider: str = ""
+    accessibility_label: str = ""
+    is_empty_state: bool = False
 
     def execute(self) -> Any:
         """Executes the action associated with this search result."""
@@ -45,6 +49,14 @@ class SearchResult:
     def has_subcommands(self) -> bool:
         """Whether this item can be drilled down into."""
         return bool(self.subcommands)
+
+    def get_accessible_text(self) -> str:
+        """Returns descriptive text for accessibility tools."""
+        if self.accessibility_label:
+            return self.accessibility_label
+        badge_part = f", {self.badge}" if self.badge else ""
+        sub_part = f", {self.subtitle}" if self.subtitle else ""
+        return f"{self.title}{badge_part}{sub_part}"
 
 
 @dataclass

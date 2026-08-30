@@ -45,6 +45,18 @@
       "default": true,
       "description": "Show category badges on search results"
     },
+    "enable_animations": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable subtle entry and dismissal transitions"
+    },
+    "animation_duration_ms": {
+      "type": "integer",
+      "default": 120,
+      "minimum": 0,
+      "maximum": 500,
+      "description": "Duration of window transitions in milliseconds"
+    },
     "providers": {
       "type": "object",
       "properties": {
@@ -55,7 +67,8 @@
         "calculator": { "type": "boolean", "default": true },
         "recent_files": { "type": "boolean", "default": true },
         "clipboard": { "type": "boolean", "default": true },
-        "web_search": { "type": "boolean", "default": true }
+        "web_search": { "type": "boolean", "default": true },
+        "krunner": { "type": "boolean", "default": true }
       },
       "additionalProperties": false
     },

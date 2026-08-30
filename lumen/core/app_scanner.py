@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
+from lumen.core.logging import debug, error, info
 from lumen.core.models import ItemCategory, SearchResult
 from lumen.core.runner import launch_desktop_file
 
@@ -20,36 +21,35 @@ except ImportError:
 
 
 def get_desktop_directories() -> List[Path]:
-    """Returns all standard XDG application directories to search."""
+    """Returns all standard XDG application directories to search in priority order."""
     dirs: List[Path] = []
 
-    # 1. User local applications
+    # 1. User local applications (highest priority)
     xdg_data_home = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
     user_app_dir = Path(xdg_data_home) / "applications"
     if user_app_dir.is_dir():
         dirs.append(user_app_dir)
 
-    # 2. System application directories
+    # 2. Flatpak user applications
+    user_flatpak = Path(os.path.expanduser("~/.local/share/flatpak/exports/share/applications"))
+    if user_flatpak.is_dir() and user_flatpak not in dirs:
+        dirs.append(user_flatpak)
+
+    # 3. System application directories
     xdg_data_dirs = os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":")
     for d in xdg_data_dirs:
         if d.strip():
             app_dir = Path(d.strip()) / "applications"
-            if app_dir.is_dir():
+            if app_dir.is_dir() and app_dir not in dirs:
                 dirs.append(app_dir)
 
-    # 3. Flatpak user & system applications
-    flatpak_dirs = [
-        Path(os.path.expanduser("~/.local/share/flatpak/exports/share/applications")),
+    # 4. System Flatpak & Snap applications
+    for extra in [
         Path("/var/lib/flatpak/exports/share/applications"),
-    ]
-    for fd in flatpak_dirs:
-        if fd.is_dir() and fd not in dirs:
-            dirs.append(fd)
-
-    # 4. Snap applications
-    snap_dir = Path("/var/lib/snapd/desktop/applications")
-    if snap_dir.is_dir() and snap_dir not in dirs:
-        dirs.append(snap_dir)
+        Path("/var/lib/snapd/desktop/applications"),
+    ]:
+        if extra.is_dir() and extra not in dirs:
+            dirs.append(extra)
 
     # 5. Fallback standard dirs if not added
     for std in [Path("/usr/share/applications"), Path("/usr/local/share/applications")]:
@@ -65,6 +65,7 @@ class AppScanner:
     def __init__(self, hidden_applications: Optional[List[str]] = None):
         self.hidden_applications: Set[str] = set(hidden_applications or [])
         self.cached_results: List[SearchResult] = []
+        self._parsed_cache: Dict[str, tuple[float, List[SearchResult]]] = {}
         self._watcher: Optional[Any] = None
         self._change_callbacks: List[Callable[[], None]] = []
 
@@ -204,21 +205,41 @@ class AppScanner:
         return results
 
     def scan(self) -> List[SearchResult]:
-        """Scans all application directories and caches search results."""
+        """Scans all application directories and caches search results with mtime optimization."""
         discovered: Dict[str, SearchResult] = {}
-        seen_names: Set[str] = set()
+        seen_file_ids: Set[str] = set()
 
         for directory in get_desktop_directories():
             if not directory.is_dir():
                 continue
-            for file_path in directory.glob("*.desktop"):
-                file_id = file_path.name
-                if file_id in discovered:
-                    continue
-                parsed_list = self.parse_desktop_file(file_path)
-                for item in parsed_list:
-                    if item.id not in discovered:
-                        discovered[item.id] = item
+            try:
+                for file_path in directory.glob("*.desktop"):
+                    file_id = file_path.name
+                    # Deduplicate: if we already saw this desktop file ID in a higher-priority folder, skip
+                    if file_id in seen_file_ids:
+                        continue
+
+                    # Check mtime cache
+                    try:
+                        mtime = file_path.stat().st_mtime
+                    except OSError:
+                        mtime = 0.0
+
+                    cached_entry = self._parsed_cache.get(str(file_path))
+                    if cached_entry and cached_entry[0] == mtime:
+                        parsed_list = cached_entry[1]
+                    else:
+                        parsed_list = self.parse_desktop_file(file_path)
+                        self._parsed_cache[str(file_path)] = (mtime, parsed_list)
+
+                    if parsed_list:
+                        seen_file_ids.add(file_id)
+                        for item in parsed_list:
+                            if item.id not in discovered:
+                                discovered[item.id] = item
+            except Exception as e:
+                error("AppScanner", f"Error scanning directory {directory}", exc=e)
 
         self.cached_results = list(discovered.values())
+        debug("AppScanner", f"Scan complete. Indexed {len(self.cached_results)} applications & actions.")
         return self.cached_results
