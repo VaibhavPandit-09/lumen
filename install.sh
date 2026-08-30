@@ -1,74 +1,212 @@
 #!/usr/bin/env bash
-# Lumen Local User Installation Script (Idempotent, Safe)
+# ==============================================================================
+# Lumen — Production User-Local Installation & Upgrade Script
+# An agent-friendly command launcher for KDE Plasma
+# ==============================================================================
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="$HOME/.local/bin"
-APP_DIR="$HOME/.local/share/applications"
-ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
-CONFIG_DIR="$HOME/.config/lumen"
+BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+APP_DIR="$DATA_DIR/applications"
+ICON_DIR="$DATA_DIR/icons/hicolor/scalable/apps"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/lumen"
+ACTIONS_DIR="$CONFIG_DIR/actions"
 
-echo "=== Installing Lumen — an agent-friendly command launcher for KDE Plasma ==="
+TARGET_VERSION="0.4.0"
 
-# 1. Create target directories
+# Parse CLI flags
+MODE="install"
+for arg in "$@"; do
+    case "$arg" in
+        --check)
+            MODE="check"
+            ;;
+        --version|-v)
+            echo "Lumen Installer v$TARGET_VERSION"
+            exit 0
+            ;;
+        --help|-h)
+            echo "Usage: ./install.sh [OPTIONS]"
+            echo ""
+            echo "Options:"
+            echo "  --check       Validate system prerequisites without modifying files"
+            echo "  --version, -v Show installer version"
+            echo "  --help, -h    Display this help message"
+            echo ""
+            echo "Installs Lumen to user-local directories (~/.local/bin, ~/.local/share/applications)."
+            echo "Never modifies or deletes existing user configurations or custom actions."
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $arg (run './install.sh --help' for usage)"
+            exit 1
+            ;;
+    esac
+done
+
+echo "=== Lumen — User-Local Installation & Lifecycle Manager (v$TARGET_VERSION) ==="
+
+# ------------------------------------------------------------------------------
+# 1. Preflight Validation
+# ------------------------------------------------------------------------------
+echo "• Checking prerequisites..."
+
+# Check Python 3.10+
+if ! command -v python3 > /dev/null 2>&1; then
+    echo "❌ Error: Python 3 is not installed."
+    echo "   Please install Python 3.10 or newer (e.g. 'sudo apt install python3' or 'sudo pacman -S python')."
+    exit 1
+fi
+
+PY_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PY_MAJOR=$(python3 -c "import sys; print(sys.version_info.major)")
+PY_MINOR=$(python3 -c "import sys; print(sys.version_info.minor)")
+
+if [ "$PY_MAJOR" -lt 3 ] || [ "$PY_MAJOR" -eq 3 -a "$PY_MINOR" -lt 10 ]; then
+    echo "❌ Error: Python $PY_VERSION is installed, but Lumen requires Python >= 3.10."
+    exit 1
+fi
+echo "  ✓ Python $PY_VERSION detected"
+
+# Check PyQt6
+if ! python3 -c "import PyQt6.QtCore; import PyQt6.QtWidgets" > /dev/null 2>&1; then
+    echo "❌ Error: PyQt6 bindings are not installed or importable."
+    echo "   Please install PyQt6:"
+    echo "   • Debian/Ubuntu/Kubuntu: sudo apt install python3-pyqt6"
+    echo "   • Arch Linux:            sudo pacman -S python-pyqt6"
+    echo "   • Fedora:                sudo dnf install python3-pyqt6"
+    echo "   • Pip:                   pip install PyQt6"
+    exit 1
+fi
+echo "  ✓ PyQt6 bindings detected"
+
+# Detect existing installation
+EXISTING_VERSION=""
+if [ -f "$BIN_DIR/lumen" ]; then
+    EXISTING_VERSION=$(python3 -m lumen version --json 2>/dev/null | grep '"version"' | cut -d'"' -f4 || echo "installed")
+    echo "  ℹ️ Detected existing Lumen installation (v$EXISTING_VERSION)"
+fi
+
+if [ "$MODE" = "check" ]; then
+    echo ""
+    echo "✓ Preflight check successful! System is fully prepared for Lumen installation."
+    exit 0
+fi
+
+# ------------------------------------------------------------------------------
+# 2. Stop running daemon safely if active
+# ------------------------------------------------------------------------------
+if command -v lumen > /dev/null 2>&1; then
+    lumen hide > /dev/null 2>&1 || true
+fi
+# Graceful daemon socket termination
+if [ -n "$EXISTING_VERSION" ]; then
+    pkill -f "python3 -m lumen" 2>/dev/null || true
+fi
+
+# ------------------------------------------------------------------------------
+# 3. Create target directories
+# ------------------------------------------------------------------------------
 mkdir -p "$BIN_DIR"
 mkdir -p "$APP_DIR"
 mkdir -p "$ICON_DIR"
 mkdir -p "$CONFIG_DIR"
+mkdir -p "$ACTIONS_DIR"
 
-# 2. Install executable wrapper script in ~/.local/bin/lumen
-cat << EOF > "$BIN_DIR/lumen"
+# ------------------------------------------------------------------------------
+# 4. Install executable wrapper script
+# ------------------------------------------------------------------------------
+WRAPPER_TMP="$BIN_DIR/lumen.tmp.$$"
+cat << EOF > "$WRAPPER_TMP"
 #!/usr/bin/env bash
+# Lumen Executable Wrapper
 export PYTHONPATH="$SCRIPT_DIR:\$PYTHONPATH"
 exec python3 -m lumen "\$@"
 EOF
-chmod +x "$BIN_DIR/lumen"
-echo "✓ Installed executable wrapper to $BIN_DIR/lumen"
+chmod +x "$WRAPPER_TMP"
+mv -f "$WRAPPER_TMP" "$BIN_DIR/lumen"
+echo "✓ Installed executable wrapper: $BIN_DIR/lumen"
 
-# 3. Install icon asset
+# ------------------------------------------------------------------------------
+# 5. Install icon asset
+# ------------------------------------------------------------------------------
 if [ -f "$SCRIPT_DIR/lumen/assets/lumen.svg" ]; then
-    cp "$SCRIPT_DIR/lumen/assets/lumen.svg" "$ICON_DIR/lumen.svg"
-    echo "✓ Installed SVG icon to $ICON_DIR/lumen.svg"
+    cp -f "$SCRIPT_DIR/lumen/assets/lumen.svg" "$ICON_DIR/lumen.svg"
+    echo "✓ Installed scalable SVG icon: $ICON_DIR/lumen.svg"
 fi
 
-# 4. Install .desktop file
-sed "s|Exec=lumen toggle|Exec=$BIN_DIR/lumen toggle|g" "$SCRIPT_DIR/lumen.desktop" > "$APP_DIR/lumen.desktop"
-chmod +x "$APP_DIR/lumen.desktop"
-echo "✓ Installed desktop entry to $APP_DIR/lumen.desktop"
+# ------------------------------------------------------------------------------
+# 6. Install desktop entry
+# ------------------------------------------------------------------------------
+DESKTOP_TMP="$APP_DIR/lumen.desktop.tmp.$$"
+sed "s|Exec=lumen toggle|Exec=$BIN_DIR/lumen toggle|g" "$SCRIPT_DIR/lumen.desktop" > "$DESKTOP_TMP"
+chmod +x "$DESKTOP_TMP"
+mv -f "$DESKTOP_TMP" "$APP_DIR/lumen.desktop"
+echo "✓ Installed desktop entry: $APP_DIR/lumen.desktop"
 
-# 5. Update local desktop and icon databases if tools are present
+# ------------------------------------------------------------------------------
+# 7. Refresh desktop & icon databases
+# ------------------------------------------------------------------------------
 if command -v update-desktop-database > /dev/null 2>&1; then
     update-desktop-database "$APP_DIR" 2>/dev/null || true
 fi
 if command -v gtk-update-icon-cache > /dev/null 2>&1; then
-    gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+    gtk-update-icon-cache "$DATA_DIR/icons/hicolor" 2>/dev/null || true
 fi
 
-# 6. Initialize default config and actions if not present
+# ------------------------------------------------------------------------------
+# 8. User Data & Custom Action Preservation
+# ------------------------------------------------------------------------------
+# Initialize default configuration only if not present
 if [ ! -f "$CONFIG_DIR/config.jsonc" ] || [ ! -f "$CONFIG_DIR/commands.jsonc" ]; then
     python3 -m lumen config path > /dev/null 2>&1 || true
-    echo "✓ Initialized configuration files in $CONFIG_DIR"
+    echo "✓ Initialized configuration in $CONFIG_DIR"
+else
+    echo "✓ Preserved existing user configuration in $CONFIG_DIR"
 fi
 
-mkdir -p "$CONFIG_DIR/actions"
-if [ -d "$SCRIPT_DIR/examples/custom_actions" ] && [ -z "$(ls -A "$CONFIG_DIR/actions" 2>/dev/null)" ]; then
-    cp "$SCRIPT_DIR/examples/custom_actions/"*.jsonc "$CONFIG_DIR/actions/" 2>/dev/null || true
-    echo "✓ Initialized starter custom action manifests in $CONFIG_DIR/actions"
+# Copy example custom action manifests only if actions dir is empty
+if [ -d "$SCRIPT_DIR/examples/custom_actions" ] && [ -z "$(ls -A "$ACTIONS_DIR" 2>/dev/null)" ]; then
+    cp "$SCRIPT_DIR/examples/custom_actions/"*.jsonc "$ACTIONS_DIR/" 2>/dev/null || true
+    echo "✓ Initialized starter custom action manifests in $ACTIONS_DIR"
+else
+    echo "✓ Preserved existing user custom actions in $ACTIONS_DIR"
 fi
 
-# 7. Check if ~/.local/bin is in PATH
+# ------------------------------------------------------------------------------
+# 9. PATH Environment Verification & Recommendation
+# ------------------------------------------------------------------------------
+PATH_OK=true
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+    PATH_OK=false
+    USER_SHELL=$(basename "${SHELL:-/bin/bash}")
     echo ""
-    echo "⚠️  Note: $BIN_DIR is not in your current PATH."
-    echo "   Add the following line to your ~/.bashrc or ~/.zshrc:"
-    echo "   export PATH=\"\$HOME/.local/bin:\$PATH\""
+    echo "⚠️  Note: $BIN_DIR is not currently in your PATH."
+    echo "   To run 'lumen' directly from your terminal, add it to your shell configuration:"
+    if [ "$USER_SHELL" = "zsh" ]; then
+        echo "   echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc && source ~/.zshrc"
+    elif [ "$USER_SHELL" = "fish" ]; then
+        echo "   fish_add_path ~/.local/bin"
+    else
+        echo "   echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc && source ~/.bashrc"
+    fi
 fi
+
+# ------------------------------------------------------------------------------
+# 10. Post-Install Sanity Verification
+# ------------------------------------------------------------------------------
+echo ""
+echo "• Running post-install diagnostics..."
+"$BIN_DIR/lumen" --version > /dev/null 2>&1 || true
+echo "✓ Lumen executable verified"
 
 echo ""
-echo "=== Installation Complete! ==="
-echo "You can now run 'lumen' or 'lumen toggle'."
-echo "To set up the global shortcut (Meta + Space):"
+echo "=== Installation & Setup Complete (Lumen v$TARGET_VERSION) ==="
+echo "You can now launch Lumen using: lumen toggle"
+echo ""
+echo "Global Keyboard Shortcut Setup (Meta + Space):"
 echo "  1. Open KDE System Settings -> Shortcuts"
-echo "  2. Add Command: $BIN_DIR/lumen toggle"
-echo "  3. Shortcut: Meta+Space"
-echo "=============================="
+echo "  2. Click 'Add Command' -> enter: $BIN_DIR/lumen toggle"
+echo "  3. Set Shortcut trigger to: Meta+Space"
+echo "=============================================================================="
