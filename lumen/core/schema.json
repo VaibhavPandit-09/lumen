@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Lumen Configuration Schema",
+  "description": "Configuration schema for Lumen command launcher and palette for KDE Plasma.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URL to the configuration schema"
+    },
+    "shortcut": {
+      "type": "string",
+      "default": "Meta+Space",
+      "description": "Global keyboard shortcut to open/toggle Lumen launcher"
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["auto", "dark", "light"],
+      "default": "auto",
+      "description": "Theme mode: auto (follows KDE Plasma), dark, or light"
+    },
+    "window_width": {
+      "type": "integer",
+      "default": 680,
+      "minimum": 400,
+      "maximum": 1400,
+      "description": "Launcher window width in pixels"
+    },
+    "max_results": {
+      "type": "integer",
+      "default": 9,
+      "minimum": 3,
+      "maximum": 25,
+      "description": "Maximum number of visible search results"
+    },
+    "opacity": {
+      "type": "number",
+      "default": 0.98,
+      "minimum": 0.5,
+      "maximum": 1.0,
+      "description": "Window background opacity"
+    },
+    "show_badges": {
+      "type": "boolean",
+      "default": true,
+      "description": "Show category badges on search results"
+    },
+    "providers": {
+      "type": "object",
+      "properties": {
+        "applications": { "type": "boolean", "default": true },
+        "commands": { "type": "boolean", "default": true },
+        "system_actions": { "type": "boolean", "default": true },
+        "locations": { "type": "boolean", "default": true },
+        "calculator": { "type": "boolean", "default": true },
+        "recent_files": { "type": "boolean", "default": true },
+        "clipboard": { "type": "boolean", "default": true },
+        "web_search": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "hidden_applications": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "List of .desktop file names or application titles to hide from search results"
+    },
+    "web_search_engine": {
+      "type": "string",
+      "default": "https://duckduckgo.com/?q=%s",
+      "description": "URL template for fallback web search (%s will be replaced with encoded query)"
+    },
+    "calculator_auto_evaluate": {
+      "type": "boolean",
+      "default": true,
+      "description": "Automatically evaluate math expressions typed into search bar"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/commandItem"
+      },
+      "description": "User and agent defined custom commands and nested submenus"
+    }
+  },
+  "$defs": {
+    "commandItem": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the command or submenu"
+        },
+        "description": {
+          "type": "string",
+          "description": "Secondary subtitle / description"
+        },
+        "command": {
+          "type": "string",
+          "description": "Shell command to execute"
+        },
+        "icon": {
+          "type": "string",
+          "default": "utilities-terminal",
+          "description": "FreeDesktop icon name or absolute image path"
+        },
+        "category": {
+          "type": "string",
+          "default": "Commands",
+          "description": "Category name for grouping"
+        },
+        "terminal": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to launch the command inside a terminal emulator"
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory for the command"
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Custom environment variables to pass to the command"
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Extra search keywords"
+        },
+        "shortcut": {
+          "type": "string",
+          "description": "Optional shortcut hint"
+        },
+        "subcommands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/commandItem"
+          },
+          "description": "Nested subcommands / submenus"
+        }
+      }
+    }
+  }
+}
