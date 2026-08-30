@@ -15,6 +15,7 @@ UID_VAL="$(id -u 2>/dev/null || echo 1000)"
 
 PURGE=false
 CHECK_MODE=false
+AUTO_YES=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -24,12 +25,16 @@ for arg in "$@"; do
         --check)
             CHECK_MODE=true
             ;;
+        -y|--yes)
+            AUTO_YES=true
+            ;;
         --help|-h)
             echo "Usage: ./uninstall.sh [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --purge       Remove user configuration and custom actions in ~/.config/lumen"
             echo "  --check       Preview files that would be removed without modifying anything"
+            echo "  -y, --yes     Automatic yes to prompts (for scripted/non-interactive uninstall)"
             echo "  --help, -h    Display this help message"
             echo ""
             echo "Normal uninstallation preserves your user configuration and custom actions."
@@ -62,7 +67,7 @@ fi
 if command -v lumen > /dev/null 2>&1; then
     lumen hide > /dev/null 2>&1 || true
 fi
-pkill -f "python3 -m lumen" 2>/dev/null || true
+pkill -f "python3.*-m lumen (daemon|show)" 2>/dev/null || true
 
 # 2. Remove application files
 if [ -f "$BIN_DIR/lumen" ]; then
@@ -94,7 +99,10 @@ fi
 
 # 5. Handle user configuration & actions
 if [ "$PURGE" = true ]; then
-    if [ -t 0 ]; then
+    if [ "$AUTO_YES" = true ]; then
+        rm -rf "$CONFIG_DIR"
+        echo "✓ Purged configuration directory: $CONFIG_DIR"
+    elif [ -t 0 ]; then
         read -p "⚠️  Are you sure you want to permanently delete all configuration and custom actions in $CONFIG_DIR? (y/N): " CONFIRM
         if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
             rm -rf "$CONFIG_DIR"
@@ -103,7 +111,7 @@ if [ "$PURGE" = true ]; then
             echo "ℹ️  Purge cancelled. User configuration preserved in $CONFIG_DIR"
         fi
     else
-        # Non-interactive purge
+        # Non-interactive purge without tty
         rm -rf "$CONFIG_DIR"
         echo "✓ Purged configuration directory: $CONFIG_DIR"
     fi

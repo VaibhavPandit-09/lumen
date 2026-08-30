@@ -17,6 +17,8 @@ class TestTrayCompanion(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication(sys.argv)
+        cls.app.setApplicationName("lumen")
+        cls.app.setOrganizationName("lumen")
 
     def test_tray_initialization_and_cleanup(self):
         parent = QWidget()

@@ -20,6 +20,8 @@ class TestUIHeadless(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication(sys.argv)
+        cls.app.setApplicationName("lumen")
+        cls.app.setOrganizationName("lumen")
 
     def setUp(self):
         self.config = LumenConfig()

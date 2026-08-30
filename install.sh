@@ -102,7 +102,7 @@ if command -v lumen > /dev/null 2>&1; then
 fi
 # Graceful daemon socket termination
 if [ -n "$EXISTING_VERSION" ]; then
-    pkill -f "python3 -m lumen" 2>/dev/null || true
+    pkill -f "python3.*-m lumen (daemon|show)" 2>/dev/null || true
 fi
 
 # ------------------------------------------------------------------------------

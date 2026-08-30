@@ -3,13 +3,27 @@ Unit tests for single-instance IPC daemon and socket helpers.
 """
 
 import os
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from lumen.service.daemon import get_socket_path, is_daemon_running, send_ipc_command
 
 
 class TestDaemonIPC(unittest.TestCase):
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.orig_runtime = os.environ.get("XDG_RUNTIME_DIR")
+        os.environ["XDG_RUNTIME_DIR"] = self.tmpdir.name
+
+    def tearDown(self):
+        if self.orig_runtime is not None:
+            os.environ["XDG_RUNTIME_DIR"] = self.orig_runtime
+        else:
+            os.environ.pop("XDG_RUNTIME_DIR", None)
+        self.tmpdir.cleanup()
 
     def test_get_socket_path_format(self):
         socket_path = get_socket_path()

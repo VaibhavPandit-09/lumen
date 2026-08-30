@@ -82,6 +82,15 @@ def cli_search(query: str, as_json: bool = False) -> None:
 
 
 def main() -> None:
+    try:
+        from PyQt6.QtCore import QCoreApplication
+        QCoreApplication.setApplicationName("lumen")
+        QCoreApplication.setOrganizationName("lumen")
+        QCoreApplication.setApplicationVersion(__version__)
+        QCoreApplication.setOrganizationDomain("github.com/VaibhavPandit-09/lumen")
+    except Exception:
+        pass
+
     parser = argparse.ArgumentParser(
         prog="lumen",
         description="Lumen — an agent-friendly command launcher for KDE Plasma",
