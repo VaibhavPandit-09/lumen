@@ -73,6 +73,38 @@ class TestUIHeadless(unittest.TestCase):
         self.window.show_launcher()
         self.assertTrue(self.window.isVisible())
 
+    def test_empty_state_rendering(self):
+        # When web provider is disabled, empty state placeholder is shown
+        self.window.web_provider.enabled = False
+        self.window.update_results("xyznonexistentcommand987")
+        self.assertEqual(self.window.result_list.count(), 1)
+        item = self.window.result_list.item(0).data(0x0100)
+        self.assertTrue(item.is_empty_state)
+        self.assertIn("No matching local results", item.title)
+
+        # Restore web provider
+        self.window.web_provider.enabled = True
+        self.window.update_results("xyznonexistentcommand987")
+        self.assertGreater(self.window.result_list.count(), 0)
+        item2 = self.window.result_list.item(0).data(0x0100)
+        self.assertIn("xyznonexistentcommand987", item2.title)
+
+    def test_accessible_text(self):
+        res = SearchResult(
+            id="test:acc",
+            title="Firefox",
+            subtitle="Web Browser",
+            badge="App",
+        )
+        self.assertEqual(res.get_accessible_text(), "Firefox, App, Web Browser")
+
+        res_custom = SearchResult(
+            id="test:acc2",
+            title="Custom",
+            accessibility_label="Custom Accessible Name",
+        )
+        self.assertEqual(res_custom.get_accessible_text(), "Custom Accessible Name")
+
 
 if __name__ == "__main__":
     unittest.main()
