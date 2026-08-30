@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -122,6 +123,14 @@ def main() -> None:
 
     actions_sub.add_parser("reload", help="Notify running daemon to reload actions from disk")
 
+    # Version CLI
+    version_p = subparsers.add_parser("version", help="Display version and system build information")
+    version_p.add_argument("--json", action="store_true", help="Output version metadata as JSON")
+
+    # Doctor CLI
+    doctor_p = subparsers.add_parser("doctor", help="Run system health and integration diagnostic checks")
+    doctor_p.add_argument("--json", action="store_true", help="Output diagnostics as JSON")
+
     # Config CLI
     config_p = subparsers.add_parser("config", help="Manage Lumen configuration")
     config_p.add_argument("action", choices=["path", "show", "edit", "add-command"], help="Config action")
@@ -138,7 +147,47 @@ def main() -> None:
         debug("CLI", "Verbose debug logging enabled.")
 
     # Handle subcommands
-    if args.subcommand == "actions":
+    if args.subcommand == "version":
+        cfg = LumenConfig().load()
+        py_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        pyqt_ver = "unknown"
+        try:
+            from PyQt6.QtCore import PYQT_VERSION_STR
+            pyqt_ver = PYQT_VERSION_STR
+        except Exception:
+            pass
+
+        info = {
+            "name": "Lumen",
+            "tagline": "An agent-friendly command launcher for KDE Plasma",
+            "version": __version__,
+            "python": py_ver,
+            "pyqt6": pyqt_ver,
+            "config_version": cfg.config_version,
+            "config_dir": str(cfg.resolved_config_dir),
+            "actions_dir": str(os.path.expanduser(cfg.actions_dir)),
+        }
+        if args.json:
+            print(json.dumps(info, indent=2))
+        else:
+            print(f"Lumen {__version__} — An agent-friendly command launcher for KDE Plasma")
+            print(f"  Python:         {py_ver}")
+            print(f"  PyQt6:          {pyqt_ver}")
+            print(f"  Config Version: {cfg.config_version}")
+            print(f"  Config Dir:     {cfg.resolved_config_dir}")
+            print(f"  Actions Dir:    {os.path.expanduser(cfg.actions_dir)}")
+        sys.exit(0)
+
+    elif args.subcommand == "doctor":
+        from lumen.core.doctor import SystemDoctor
+        report = SystemDoctor.run_all_checks()
+        if args.json:
+            print(json.dumps(report.to_dict(), indent=2))
+        else:
+            print(report.format_text())
+        sys.exit(0 if report.is_healthy else 1)
+
+    elif args.subcommand == "actions":
         from lumen.core.actions.discovery import ActionScanner
         from lumen.core.actions.executor import ActionContext, ActionExecutor
         from lumen.core.actions.validator import ActionValidator
