@@ -111,6 +111,9 @@ class SystemDoctor:
         report.checks.append(cls.check_icon_asset())
         report.checks.append(cls.check_configuration(cfg))
         report.checks.append(cls.check_custom_actions(cfg))
+        report.checks.append(cls.check_package_backends())
+        report.checks.append(cls.check_privilege_escalation())
+        report.checks.append(cls.check_global_shortcut())
         report.checks.append(cls.check_ipc_daemon())
         report.checks.append(cls.check_krunner_interface())
         report.checks.append(cls.check_system_tray())
@@ -357,6 +360,64 @@ class SystemDoctor:
             name="KRunner Interoperability",
             status=CheckStatus.INFO,
             message="D-Bus query tools not found (KRunner provider operates in graceful fallback)",
+        )
+
+    @staticmethod
+    def check_package_backends() -> DiagnosticCheck:
+        from lumen.core.packages.manager import PackageManager
+        mgr = PackageManager.get_instance()
+        available = [b.name for b in mgr.get_available_backends()]
+        if available:
+            return DiagnosticCheck(
+                name="Package Management Backends",
+                status=CheckStatus.PASS,
+                message=f"Detected package backends: {', '.join(available)}",
+                details=f"Backends active: {', '.join(b.backend_id for b in mgr.get_available_backends())}",
+            )
+        return DiagnosticCheck(
+            name="Package Management Backends",
+            status=CheckStatus.WARN,
+            message="No supported package manager (APT, Flatpak, Snap, Pacman) detected",
+            fix_suggestion="Install a supported package manager to enable software management.",
+        )
+
+    @staticmethod
+    def check_privilege_escalation() -> DiagnosticCheck:
+        if shutil.which("pkexec") or shutil.which("kdesu") or shutil.which("sudo"):
+            tool = "pkexec" if shutil.which("pkexec") else ("kdesu" if shutil.which("kdesu") else "sudo")
+            return DiagnosticCheck(
+                name="Privilege Escalation",
+                status=CheckStatus.PASS,
+                message=f"Elevation tool '{tool}' is available for package operations",
+            )
+        return DiagnosticCheck(
+            name="Privilege Escalation",
+            status=CheckStatus.WARN,
+            message="No privilege elevation tool (pkexec/kdesu/sudo) detected",
+            fix_suggestion="Install PolicyKit (pkexec) for system package operations.",
+        )
+
+    @staticmethod
+    def check_global_shortcut() -> DiagnosticCheck:
+        from lumen.service.shortcuts import KDEShortcutManager
+        if KDEShortcutManager.is_kde_session():
+            sc = KDEShortcutManager.get_active_shortcut()
+            if sc and sc.lower() != "none":
+                return DiagnosticCheck(
+                    name="KDE Global Shortcut",
+                    status=CheckStatus.PASS,
+                    message=f"Global shortcut '{sc}' is configured in KDE Plasma",
+                )
+            return DiagnosticCheck(
+                name="KDE Global Shortcut",
+                status=CheckStatus.WARN,
+                message="Global shortcut not yet registered in KDE Plasma",
+                fix_suggestion="Run 'lumen setup' to configure Alt+Space shortcut.",
+            )
+        return DiagnosticCheck(
+            name="KDE Global Shortcut",
+            status=CheckStatus.INFO,
+            message="Desktop session is non-KDE (configure global shortcut via window manager)",
         )
 
     @staticmethod

@@ -59,7 +59,7 @@ class TestConfig(unittest.TestCase):
 
             self.assertTrue(cfg.config_file.exists())
             self.assertTrue(cfg.commands_file.exists())
-            self.assertEqual(cfg.shortcut, "Meta+Space")
+            self.assertEqual(cfg.shortcut, "Alt+Space")
             self.assertGreater(len(cfg.commands), 0)
 
             # Add a new command

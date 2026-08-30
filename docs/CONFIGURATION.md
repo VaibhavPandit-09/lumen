@@ -20,12 +20,12 @@ Configurations are located in:
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `config_version` | `integer` | `1` | Configuration schema version (used by migration engine) |
-| `shortcut` | `string` | `"Meta+Space"` | Global keyboard shortcut trigger |
+| `shortcut` | `string` | `"Alt+Space"` | Global keyboard shortcut trigger |
 | `theme` | `string` | `"auto"` | Theme: `"auto"` (follows KDE Breeze), `"dark"`, or `"light"` |
 | `window_width` | `integer` | `680` | Launcher window width in pixels (400 - 1400) |
 | `max_results` | `integer` | `9` | Maximum visible search items (3 - 25) |
 | `opacity` | `number` | `0.98` | Window background opacity (0.5 to 1.0) |
-| `show_badges` | `boolean` | `true` | Display category pill badges (`[App]`, `[Cmd]`, `[Action]`, `[Calc]`, `[Unit]`) |
+| `show_badges` | `boolean` | `true` | Display category pill badges (`[App]`, `[Pkg]`, `[Cmd]`, `[Action]`, `[Calc]`) |
 | `enable_animations` | `boolean` | `true` | Enable subtle window entry/dismissal transitions |
 | `animation_duration_ms` | `integer` | `120` | Transition duration in milliseconds (0 - 500) |
 | `actions_dir` | `string` | `"~/.config/lumen/actions"` | Directory storing custom action manifests |
@@ -39,6 +39,7 @@ Configurations are located in:
 ```jsonc
 "providers": {
   "applications": true,
+  "packages": true,
   "commands": true,
   "actions": true,
   "system_actions": true,

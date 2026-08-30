@@ -159,6 +159,7 @@ class ResultListWidget(QListWidget):
         self.setObjectName("LumenResultList")
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setMouseTracking(True)
 
     def select_next(self) -> None:
@@ -182,3 +183,10 @@ class ResultListWidget(QListWidget):
         if item:
             return item.data(Qt.ItemDataRole.UserRole)
         return None
+
+    def mouseMoveEvent(self, event):
+        item = self.itemAt(event.pos())
+        if item:
+            self.setCurrentItem(item)
+        super().mouseMoveEvent(event)
+

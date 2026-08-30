@@ -85,9 +85,15 @@ if [ -f "$ICON_DIR/lumen.svg" ]; then
     echo "✓ Removed SVG icon: $ICON_DIR/lumen.svg"
 fi
 
-# 3. Clean up runtime socket directories
+# 3. Clean up runtime socket directories and KDE global shortcut
 rm -rf "$RUNTIME_DIR/lumen" 2>/dev/null || true
 rm -rf "/tmp/lumen_$UID_VAL" 2>/dev/null || true
+
+if command -v kwriteconfig6 > /dev/null 2>&1; then
+    kwriteconfig6 --file kglobalshortcutsrc --group services --key lumen.desktop "none,none,Lumen Launcher" 2>/dev/null || true
+elif command -v kwriteconfig5 > /dev/null 2>&1; then
+    kwriteconfig5 --file kglobalshortcutsrc --group services --key lumen.desktop "none,none,Lumen Launcher" 2>/dev/null || true
+fi
 
 # 4. Refresh desktop database
 if command -v update-desktop-database > /dev/null 2>&1; then

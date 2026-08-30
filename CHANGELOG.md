@@ -5,6 +5,17 @@ All notable changes to **Lumen** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-30
+
+### Added
+- **Desktop-Grade Launcher Interaction Contract**: Established canonical `ActionDispatcher` ensuring identical execution for keyboard (`Enter`) and mouse clicks; added `FocusPolicy.NoFocus` to result lists guaranteeing keyboard focus always stays in the search bar; instant `Escape` dismissal.
+- **Universal Software Management Platform**: Unified software abstraction (`BasePackageBackend`, `PackageManager`) supporting **APT**, **Flatpak**, **Snap**, and **Pacman** with PolicyKit (`pkexec`) privilege elevation and concurrency locking.
+- **Natural Command Intent Parsing**: Direct support for typing natural intents (`install <pkg>`, `uninstall <pkg>`, `update <pkg>`, `update all`, `updates`).
+- **First-Class KDE Global Shortcut Setup (`lumen setup`)**: Automated setup wizard detecting KDE Plasma 6/5 and registering `Alt+Space` via native KDE tools (`kwriteconfig6`, `qdbus6`, `kglobalshortcutsrc`).
+- **Expanded CLI Software Management**: Added `lumen setup`, `lumen packages [search|install|remove|updates]`, and `lumen update` subcommands with machine-readable `--json` modes.
+- **Immediate Application Re-Indexing**: Newly installed/removed applications automatically trigger background desktop file scanning for instant searchability without rebooting.
+- **Expanded Test Suite**: Comprehensive test suite with 112 automated tests (100% pass rate in headless mode).
+
 ## [0.4.0] - 2026-08-30
 
 ### Added

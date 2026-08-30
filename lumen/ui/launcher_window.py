@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from lumen.core.actions.dispatcher import ActionDispatcher, DispatchResult, DispatchStatus
 from lumen.core.config import LumenConfig
 from lumen.core.fuzzy import score_item
 from lumen.core.logging import debug, info
@@ -33,6 +34,7 @@ from lumen.providers.conversions import ConversionsProvider
 from lumen.providers.currency import CurrencyProvider
 from lumen.providers.krunner import KRunnerProvider
 from lumen.providers.locations import LocationsProvider
+from lumen.providers.packages import PackagesProvider
 from lumen.providers.recent_files import RecentFilesProvider
 from lumen.providers.system_actions import SystemActionsProvider
 from lumen.providers.web_search import WebSearchProvider
@@ -68,7 +70,6 @@ class LauncherWindow(QWidget):
         self._pending_confirmation: Optional[SearchResult] = None
 
         # Navigation stack for submenus
-        # Each entry is a tuple: (title: str, items: List[SearchResult])
         self.nav_stack: List[tuple[str, List[SearchResult]]] = []
 
         # Setup UI
@@ -83,7 +84,7 @@ class LauncherWindow(QWidget):
         self.refresh_all_providers()
 
     def _init_window_flags(self) -> None:
-        """Configures frameless floating window properties."""
+        """Configures frameless floating overlay window properties."""
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.Tool
@@ -102,6 +103,9 @@ class LauncherWindow(QWidget):
         self.app_provider = ApplicationProvider(
             hidden_applications=self.config.hidden_applications,
             enabled=p_cfg.get("applications", True),
+        )
+        self.pkg_provider = PackagesProvider(
+            enabled=p_cfg.get("packages", True),
         )
         self.cmd_provider = CommandProvider(
             commands=self.config.commands,
@@ -147,6 +151,7 @@ class LauncherWindow(QWidget):
             self.act_provider,
             self.cmd_provider,
             self.app_provider,
+            self.pkg_provider,
             self.sys_provider,
             self.loc_provider,
             self.krunner_provider,
@@ -165,7 +170,6 @@ class LauncherWindow(QWidget):
 
     def _init_ui(self) -> None:
         """Builds UI layout and subwidgets."""
-        # Outer container layout for drop shadow margins
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(12, 12, 12, 12)
         outer_layout.setSpacing(0)
@@ -198,7 +202,7 @@ class LauncherWindow(QWidget):
 
         # Footer helper info
         self.footer_label = QLabel(
-            "↑↓ Navigate   •   ↵ Launch   •   Tab Submenu   •   Esc Dismiss",
+            "↑↓ Navigate   •   ↵ Execute   •   Click Launch   •   Esc Dismiss",
             self.container,
         )
         self.footer_label.setObjectName("LumenFooter")
@@ -223,13 +227,13 @@ class LauncherWindow(QWidget):
         """Connects search and navigation events."""
         self.search_bar.textChanged.connect(self._on_search_query_changed)
         self.search_bar.navigate_signal.connect(self._on_navigate_list)
-        self.search_bar.activate_signal.connect(self._on_item_activated)
+        self.search_bar.activate_signal.connect(lambda: self._on_item_activated())
         self.search_bar.dismiss_signal.connect(self.dismiss)
         self.search_bar.drill_down_signal.connect(self._on_drill_down)
         self.search_bar.pop_level_signal.connect(self._on_pop_level)
 
-        self.result_list.itemActivated.connect(lambda _: self._on_item_activated())
-        self.result_list.itemClicked.connect(lambda _: self._on_item_activated())
+        self.result_list.itemActivated.connect(lambda item: self._on_item_activated(item.data(Qt.ItemDataRole.UserRole)))
+        self.result_list.itemClicked.connect(lambda item: self._on_item_activated(item.data(Qt.ItemDataRole.UserRole)))
 
     def _on_search_query_changed(self, query: str) -> None:
         """Called whenever search bar text changes."""
@@ -255,22 +259,48 @@ class LauncherWindow(QWidget):
             self.push_submenu(item.title, item.subcommands)
             return
 
-        # Handle Confirmation Requirement
-        if item.requires_confirmation:
-            if self._pending_confirmation != item:
-                self._pending_confirmation = item
-                prompt = item.confirm_prompt or f"Confirm: {item.title}?"
-                self.breadcrumb_label.setText(f"⚠️ {prompt} — Press Enter again to execute (Esc to cancel)")
-                self.breadcrumb_label.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: bold;")
-                self.breadcrumb_label.setVisible(True)
-                return
+        confirmed = (self._pending_confirmation == item)
 
-        # Reset confirmation state
+        # Dispatch action through canonical ActionDispatcher
+        res = ActionDispatcher.dispatch(
+            item=item,
+            on_progress=self._on_action_progress,
+            on_complete=self._on_action_complete,
+            confirmed=confirmed,
+        )
+
+        if res.status == DispatchStatus.CONFIRMATION_REQUIRED:
+            self._pending_confirmation = item
+            prompt = res.message or f"Confirm: {item.title}?"
+            self.breadcrumb_label.setText(f"⚠️ {prompt} — Press Enter again or click to execute (Esc to cancel)")
+            self.breadcrumb_label.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: bold;")
+            self.breadcrumb_label.setVisible(True)
+            return
+
         self._pending_confirmation = None
 
-        # Execute action
-        self.dismiss()
-        item.execute()
+        if res.dismiss_window:
+            self.dismiss()
+
+    def _on_action_progress(self, progress_text: str) -> None:
+        """Shows non-blocking progress in the breadcrumb bar."""
+        self.breadcrumb_label.setText(f"⚙️ {progress_text}")
+        self.breadcrumb_label.setStyleSheet("color: #38BDF8; font-size: 11px; font-weight: bold;")
+        self.breadcrumb_label.setVisible(True)
+
+    def _on_action_complete(self, result: DispatchResult) -> None:
+        """Called when an async action completes."""
+        if result.status == DispatchStatus.SUCCESS:
+            self.breadcrumb_label.setText(f"✓ {result.message}")
+            self.breadcrumb_label.setStyleSheet("color: #10B981; font-size: 11px; font-weight: bold;")
+            # Immediately re-index desktop applications
+            try:
+                self.app_provider.scanner.scan()
+            except Exception:
+                pass
+        else:
+            self.breadcrumb_label.setText(f"❌ {result.message}")
+            self.breadcrumb_label.setStyleSheet("color: #EF4444; font-size: 11px; font-weight: bold;")
 
     def _on_drill_down(self) -> None:
         """Enters submenu if current item has subcommands."""
@@ -305,6 +335,7 @@ class LauncherWindow(QWidget):
         else:
             path_str = " > ".join([title for title, _ in self.nav_stack])
             self.breadcrumb_label.setText(f"Lumen  ›  {path_str}")
+            self.breadcrumb_label.setStyleSheet(f"color: {self.theme.accent_color}; font-size: 11px; font-weight: bold;")
             self.breadcrumb_label.setVisible(True)
 
     def update_results(self, query: str) -> None:
@@ -328,36 +359,19 @@ class LauncherWindow(QWidget):
                         category=item.category,
                     )
                     if matched:
-                        scored = SearchResult(
-                            id=item.id,
-                            title=item.title,
-                            subtitle=item.subtitle,
-                            category=item.category,
-                            icon_name=item.icon_name,
-                            score=score,
-                            action=item.action,
-                            subcommands=item.subcommands,
-                            badge=item.badge,
-                            keywords=item.keywords,
-                            shortcut_hint=item.shortcut_hint,
-                            context=item.context,
-                            origin_provider=item.origin_provider,
-                        )
-                        results.append(scored)
+                        results.append(item)
                 results.sort(key=lambda x: x.score, reverse=True)
         else:
-            # Search across all enabled providers using error-safe boundaries
             all_results: List[SearchResult] = []
             for provider in self.providers:
                 if provider.enabled:
                     res = provider.safe_search(q)
                     all_results.extend(res)
 
-            # Sort descending by match score
             all_results.sort(key=lambda x: x.score, reverse=True)
             results = all_results[: self.config.max_results]
 
-        # If user typed a query and no results were found, display clean empty state
+        # Empty state fallback
         if q and not results:
             from lumen.core.runner import open_path_or_url
             import urllib.parse
@@ -386,7 +400,7 @@ class LauncherWindow(QWidget):
         if self.result_list.count() > 0:
             self.result_list.setCurrentRow(0)
 
-        # Dynamically adjust window height based on result count
+        # Dynamically adjust window height
         item_count = self.result_list.count()
         desired_height = 110 + (max(1, item_count) * 52)
         if self.breadcrumb_label.isVisible():
@@ -402,15 +416,14 @@ class LauncherWindow(QWidget):
 
         geo = screen.geometry()
         win_w = self.width()
-
         x = geo.x() + (geo.width() - win_w) // 2
         y = geo.y() + int(geo.height() * 0.18)
-
         self.move(x, y)
 
     def show_launcher(self) -> None:
         """Presents the launcher window, focuses search input, and resets state."""
         self.nav_stack.clear()
+        self._pending_confirmation = None
         self._update_breadcrumb()
         self.search_bar.clear()
         self.update_results("")
@@ -424,6 +437,7 @@ class LauncherWindow(QWidget):
     def dismiss(self) -> None:
         """Hides the launcher overlay with subtle transition."""
         self.anim_manager.animate_hide()
+        self._pending_confirmation = None
         self.search_bar.clear()
         self.nav_stack.clear()
 
@@ -438,7 +452,6 @@ class LauncherWindow(QWidget):
         """Auto-hide launcher when user clicks outside or window loses focus."""
         if event.type() == QEvent.Type.ActivationChange:
             if not self.isActiveWindow():
-                # Allow a tiny grace period to avoid instant dismiss during launch
                 QTimer.singleShot(120, self._check_focus_and_hide)
         super().changeEvent(event)
 
@@ -448,7 +461,11 @@ class LauncherWindow(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
-            if self.nav_stack:
+            if self._pending_confirmation:
+                self._pending_confirmation = None
+                self._update_breadcrumb()
+                self.update_results(self.search_bar.text())
+            elif self.nav_stack:
                 self.pop_submenu()
             else:
                 self.dismiss()

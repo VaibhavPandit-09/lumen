@@ -21,11 +21,20 @@ Lumen is engineered so that **AI coding agents** can easily inspect the system, 
 lumen/
 ├── assets/             # Vector icon assets (lumen.svg)
 ├── core/               # Matching, scanning, configuration, logging, and execution
-│   ├── actions/        # Custom action scripting engine
+│   ├── actions/        # Custom action scripting & dispatch engine
 │   │   ├── discovery.py  # Action scanner & mtime cache
+│   │   ├── dispatcher.py # Canonical ActionDispatcher routing all item execution
 │   │   ├── executor.py   # Safe execution & timeout manager
 │   │   ├── manifest.py   # ActionDefinition & manifest loader
 │   │   └── validator.py  # Contract validation & diagnostics
+│   ├── packages/       # Universal software management subsystem
+│   │   ├── apt.py        # APT & Dpkg backend
+│   │   ├── base.py       # BasePackageBackend & PackageInfo models
+│   │   ├── flatpak.py    # Flatpak backend
+│   │   ├── intent.py     # Natural command intent parser
+│   │   ├── manager.py    # Multi-backend aggregator & concurrency lock
+│   │   ├── pacman.py     # Pacman & ALPM backend
+│   │   └── snap.py       # Snap backend
 │   ├── app_scanner.py  # XDG .desktop parsing, caching, and watching
 │   ├── calculator.py   # AST-based safe math & percentage evaluation
 │   ├── config.py       # JSONC config parser, schema validation, and migrations
@@ -47,20 +56,21 @@ lumen/
 │   ├── currency.py     # Cached currency conversions
 │   ├── krunner.py      # Optional KDE Plasma KRunner D-Bus adapter
 │   ├── locations.py    # Standard folders provider
+│   ├── packages.py     # Software search & natural intent provider
 │   ├── recent_files.py # FreeDesktop recent documents (.xbel)
 │   ├── system_actions.py # KDE session & settings actions
 │   └── web_search.py   # Fallback browser search provider
 ├── service/            # Lifecycle & IPC daemon
 │   ├── daemon.py       # Single-instance Unix socket server
-│   └── shortcuts.py    # Global shortcut helpers
+│   └── shortcuts.py    # Global shortcut helpers (Alt+Space)
 ├── ui/                 # PyQt6 command palette interface
 │   ├── animations.py   # Subtle 120ms window transitions
 │   ├── launcher_window.py # Main floating overlay window
-│   ├── result_list.py  # High-performance custom item delegate
+│   ├── result_list.py  # High-performance custom item delegate (NoFocus)
 │   ├── search_bar.py   # Keyboard-first search input widget
 │   ├── theme.py        # Breeze theme & color scheme engine
 │   └── tray.py         # Optional KDE Plasma system tray companion
-└── tests/              # 67 unit & headless integration tests
+└── tests/              # 112+ unit & headless integration tests
 ```
 
 ---

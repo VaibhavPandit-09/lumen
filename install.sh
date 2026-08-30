@@ -13,7 +13,7 @@ ICON_DIR="$DATA_DIR/icons/hicolor/scalable/apps"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/lumen"
 ACTIONS_DIR="$CONFIG_DIR/actions"
 
-TARGET_VERSION="0.4.0"
+TARGET_VERSION="$(python3 -c 'import lumen; print(lumen.__version__)' 2>/dev/null || echo '0.5.0')"
 
 # Parse CLI flags
 MODE="install"
@@ -194,19 +194,17 @@ if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
 fi
 
 # ------------------------------------------------------------------------------
-# 10. Post-Install Sanity Verification
+# 10. Automatic First-Run Setup & KDE Global Shortcut Registration
 # ------------------------------------------------------------------------------
 echo ""
-echo "• Running post-install diagnostics..."
-"$BIN_DIR/lumen" --version > /dev/null 2>&1 || true
-echo "✓ Lumen executable verified"
+echo "• Running first-run setup & KDE shortcut registration..."
+"$BIN_DIR/lumen" setup || true
 
 echo ""
-echo "=== Installation & Setup Complete (Lumen v$TARGET_VERSION) ==="
-echo "You can now launch Lumen using: lumen toggle"
-echo ""
-echo "Global Keyboard Shortcut Setup (Meta + Space):"
-echo "  1. Open KDE System Settings -> Shortcuts"
-echo "  2. Click 'Add Command' -> enter: $BIN_DIR/lumen toggle"
-echo "  3. Set Shortcut trigger to: Meta+Space"
+echo "=== Installation Complete (Lumen v$TARGET_VERSION) ==="
+echo "Lumen is installed and ready to use."
+echo "• Open launcher:      Press Alt+Space (or run 'lumen toggle')"
+echo "• Diagnostics:         lumen doctor"
+echo "• Software search:     lumen packages search <query>"
+echo "• Manage shortcut:     lumen setup"
 echo "=============================================================================="

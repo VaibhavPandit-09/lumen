@@ -1,3 +1,16 @@
+lumen (0.5.0-1) unstable; urgency=medium
+
+  * Desktop-grade launcher UX, zero-friction setup, and universal software management.
+  * Canonical ActionDispatcher routing all item execution (Enter and mouse clicks).
+  * Reliable overlay window lifecycle, focus retention, and taskbar suppression.
+  * Universal package management platform supporting APT, Flatpak, Snap, and Pacman.
+  * Natural command intent parsing (install, uninstall, update, update all).
+  * Interactive and non-interactive PolicyKit (pkexec) privilege escalation.
+  * First-class KDE global shortcut setup (lumen setup).
+  * Extended health diagnostics and 100+ automated test suite.
+
+ -- Vaibhav Pandit <vaibhavpandit09@users.noreply.github.com>  Sun, 30 Aug 2026 16:00:00 +0530
+
 lumen (0.4.0-1) unstable; urgency=medium
 
   * Seamless distribution, lifecycle, health diagnostics, and upgrades.

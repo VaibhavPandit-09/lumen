@@ -11,6 +11,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 class ItemCategory(str, Enum):
     APPLICATION = "Applications"
+    PACKAGE = "Software"
     COMMAND = "Commands"
     CUSTOM_ACTION = "Actions"
     CONVERSION = "Conversions"
@@ -23,6 +24,44 @@ class ItemCategory(str, Enum):
     KRUNNER = "KRunner"
 
 
+class ActionType(str, Enum):
+    APP_LAUNCH = "app_launch"
+    COMMAND = "command"
+    CUSTOM_ACTION = "custom_action"
+    CALCULATION = "calculation"
+    CONVERSION = "conversion"
+    LOCATION = "location"
+    RECENT_FILE = "recent_file"
+    CLIPBOARD = "clipboard"
+    WEB_SEARCH = "web_search"
+    PACKAGE_INSTALL = "package_install"
+    PACKAGE_REMOVE = "package_remove"
+    PACKAGE_UPDATE = "package_update"
+    SYSTEM_UPDATE_ALL = "system_update_all"
+    LUMEN_INTERNAL = "lumen_internal"
+    GENERIC = "generic"
+
+
+@dataclass
+class ActionPayload:
+    """Carries metadata and executable handler for a search result."""
+    action_type: ActionType = ActionType.GENERIC
+    target: str = ""
+    args: List[str] = field(default_factory=list)
+    handler: Optional[Callable[[], Any]] = None
+    is_async: bool = False
+    is_destructive: bool = False
+    requires_auth: bool = False
+    confirm_prompt: str = ""
+    success_message: str = ""
+    error_message: str = ""
+
+    def execute(self) -> Any:
+        if self.handler is not None and callable(self.handler):
+            return self.handler()
+        return None
+
+
 @dataclass
 class SearchResult:
     """Represents a single actionable search result in Lumen."""
@@ -33,6 +72,7 @@ class SearchResult:
     icon_name: str = "application-x-executable"
     score: float = 0.0
     action: Optional[Callable[[], Any]] = None
+    payload: Optional[ActionPayload] = None
     subcommands: List["SearchResult"] = field(default_factory=list)
     badge: str = ""
     keywords: List[str] = field(default_factory=list)
@@ -48,6 +88,8 @@ class SearchResult:
 
     def execute(self) -> Any:
         """Executes the action associated with this search result."""
+        if self.payload is not None:
+            return self.payload.execute()
         if self.action is not None and callable(self.action):
             return self.action()
         return None

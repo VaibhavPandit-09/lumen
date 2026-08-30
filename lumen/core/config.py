@@ -83,7 +83,7 @@ DEFAULT_CONFIG_JSONC = """// Lumen Main Configuration
   "config_version": 1,
 
   // Global shortcut to toggle Lumen
-  "shortcut": "Meta+Space",
+  "shortcut": "Alt+Space",
 
   // Theme mode: "auto" (follows KDE Breeze palette), "dark", or "light"
   "theme": "auto",
@@ -109,10 +109,13 @@ DEFAULT_CONFIG_JSONC = """// Lumen Main Configuration
   // Enable/disable individual search providers
   "providers": {
     "applications": true,
+    "packages": true,
     "commands": true,
     "system_actions": true,
     "locations": true,
     "calculator": true,
+    "conversions": true,
+    "currency": true,
     "recent_files": true,
     "clipboard": true,
     "web_search": true,

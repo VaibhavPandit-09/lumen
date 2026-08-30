@@ -28,6 +28,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
     from lumen.providers.currency import CurrencyProvider
     from lumen.providers.krunner import KRunnerProvider
     from lumen.providers.locations import LocationsProvider
+    from lumen.providers.packages import PackagesProvider
     from lumen.providers.system_actions import SystemActionsProvider
 
     config = LumenConfig().load()
@@ -38,6 +39,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
         CustomActionsProvider(actions_dir=config.actions_dir, enabled=config.providers.get("actions", True)),
         CommandProvider(commands=config.commands, enabled=config.providers.get("commands", True)),
         ApplicationProvider(hidden_applications=config.hidden_applications, enabled=config.providers.get("applications", True)),
+        PackagesProvider(enabled=config.providers.get("packages", True)),
         SystemActionsProvider(enabled=config.providers.get("system_actions", True)),
         LocationsProvider(enabled=config.providers.get("locations", True)),
         KRunnerProvider(enabled=config.providers.get("krunner", True)),
@@ -132,6 +134,35 @@ def main() -> None:
 
     actions_sub.add_parser("reload", help="Notify running daemon to reload actions from disk")
 
+    # Setup CLI
+    setup_p = subparsers.add_parser("setup", help="First-run setup wizard and KDE shortcut configuration")
+    setup_p.add_argument("--shortcut", type=str, default="Alt+Space", help="Global shortcut trigger (default: Alt+Space)")
+    setup_p.add_argument("--json", action="store_true", help="Output setup status as JSON")
+
+    # Packages CLI
+    pkg_p = subparsers.add_parser("packages", help="Unified package management CLI")
+    pkg_sub = pkg_p.add_subparsers(dest="pkg_action", help="Package command")
+
+    pkg_search_p = pkg_sub.add_parser("search", help="Search software packages")
+    pkg_search_p.add_argument("query", type=str, help="Package search term")
+    pkg_search_p.add_argument("--json", action="store_true")
+
+    pkg_inst_p = pkg_sub.add_parser("install", help="Install software package")
+    pkg_inst_p.add_argument("package", type=str, help="Package name to install")
+    pkg_inst_p.add_argument("--backend", type=str, help="Specific backend (apt, flatpak, snap, pacman)")
+
+    pkg_rm_p = pkg_sub.add_parser("remove", help="Remove/uninstall software package")
+    pkg_rm_p.add_argument("package", type=str, help="Package name to remove")
+    pkg_rm_p.add_argument("--purge", action="store_true", help="Purge configuration files")
+    pkg_rm_p.add_argument("--backend", type=str, help="Specific backend (apt, flatpak, snap, pacman)")
+
+    pkg_up_p = pkg_sub.add_parser("updates", help="Check available software updates")
+    pkg_up_p.add_argument("--json", action="store_true")
+
+    # Update CLI
+    update_p = subparsers.add_parser("update", help="Update all software packages across active backends")
+    update_p.add_argument("--json", action="store_true")
+
     # Version CLI
     version_p = subparsers.add_parser("version", help="Display version and system build information")
     version_p.add_argument("--json", action="store_true", help="Output version metadata as JSON")
@@ -154,6 +185,104 @@ def main() -> None:
     if args.debug:
         set_debug(True)
         debug("CLI", "Verbose debug logging enabled.")
+
+    # Handle subcommands
+    if args.subcommand == "setup":
+        from lumen.service.shortcuts import KDEShortcutManager
+        from lumen.core.packages.manager import PackageManager
+
+        is_kde = KDEShortcutManager.is_kde_session()
+        shortcut_set, shortcut_msg = False, "Not in KDE session"
+        if is_kde:
+            shortcut_set, shortcut_msg = KDEShortcutManager.configure_shortcut(shortcut=args.shortcut)
+
+        pkg_mgr = PackageManager.get_instance()
+        available_backends = [b.name for b in pkg_mgr.get_available_backends()]
+
+        status_data = {
+            "status": "ready" if (is_kde and shortcut_set) or available_backends else "configured",
+            "version": __version__,
+            "kde_plasma": is_kde,
+            "shortcut": args.shortcut,
+            "shortcut_configured": shortcut_set,
+            "shortcut_message": shortcut_msg,
+            "package_backends": available_backends,
+        }
+
+        if args.json:
+            print(json.dumps(status_data, indent=2))
+        else:
+            print(f"=== Lumen First-Run Setup (v{__version__}) ===")
+            print(f"• Desktop Environment: {'KDE Plasma' if is_kde else 'Other / Standard FreeDesktop'}")
+            print(f"• Global Shortcut:      {args.shortcut} ({'✓ Configured' if shortcut_set else shortcut_msg})")
+            print("• Package Backends:")
+            for b in pkg_mgr.backends.values():
+                sym = "✓" if b.is_available() else "—"
+                print(f"    {b.name:<10} {sym}")
+            print("")
+            print(f"Lumen is ready. Press '{args.shortcut}' or run 'lumen toggle' to open.")
+            print("==================================================")
+        sys.exit(0)
+
+    elif args.subcommand == "packages":
+        from lumen.core.packages.manager import PackageManager
+        pkg_mgr = PackageManager.get_instance()
+
+        if args.pkg_action == "search":
+            results = pkg_mgr.search_all(args.query)
+            if args.json:
+                print(json.dumps([p.to_dict() for p in results], indent=2))
+            else:
+                print(f"Software Packages matching '{args.query}':")
+                print("=" * 60)
+                for p in results:
+                    inst = " [installed]" if p.installed else ""
+                    print(f"• {p.name} ({p.source_backend.upper()}){inst}")
+                    if p.summary:
+                        print(f"  {p.summary}")
+                print("=" * 60)
+            sys.exit(0)
+
+        elif args.pkg_action == "install":
+            res = pkg_mgr.install(args.package, backend_id=args.backend)
+            print(res.message)
+            sys.exit(0 if res.success else 1)
+
+        elif args.pkg_action == "remove":
+            res = pkg_mgr.remove(args.package, backend_id=args.backend, purge=args.purge)
+            print(res.message)
+            sys.exit(0 if res.success else 1)
+
+        elif args.pkg_action == "updates":
+            updates = pkg_mgr.check_all_updates()
+            if args.json:
+                out = {b: [p.to_dict() for p in pkgs] for b, pkgs in updates.items()}
+                print(json.dumps(out, indent=2))
+            else:
+                total = sum(len(pkgs) for pkgs in updates.values())
+                print(f"Available Software Updates ({total} total):")
+                print("=" * 60)
+                for b, pkgs in updates.items():
+                    print(f"[{b}] ({len(pkgs)} updates):")
+                    for p in pkgs:
+                        print(f"  • {p.name} {p.version} -> {p.new_version}")
+                print("=" * 60)
+            sys.exit(0)
+
+    elif args.subcommand == "update":
+        from lumen.core.packages.manager import PackageManager
+        pkg_mgr = PackageManager.get_instance()
+        results = pkg_mgr.update_all()
+        if args.json:
+            print(json.dumps({b: r.to_dict() for b, r in results.items()}, indent=2))
+        else:
+            print("System Software Update Results:")
+            print("=" * 60)
+            for b, r in results.items():
+                status = "✓" if r.success else "❌"
+                print(f"• [{b}] {status} {r.message}")
+            print("=" * 60)
+        sys.exit(0 if all(r.success for r in results.values()) else 1)
 
     # Handle subcommands
     if args.subcommand == "version":
