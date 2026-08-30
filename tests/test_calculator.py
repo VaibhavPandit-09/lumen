@@ -38,6 +38,18 @@ class TestCalculator(unittest.TestCase):
         self.assertIsNotNone(res_sin)
         self.assertEqual(res_sin.result_str, "0")
 
+        res_sin_deg = evaluate_expression("sin(90 deg)")
+        self.assertIsNotNone(res_sin_deg)
+        self.assertAlmostEqual(res_sin_deg.numeric_value, 1.0)
+
+        res_hypot = evaluate_expression("hypot(3, 4)")
+        self.assertIsNotNone(res_hypot)
+        self.assertEqual(res_hypot.result_str, "5")
+
+        res_gcd = evaluate_expression("gcd(54, 24)")
+        self.assertIsNotNone(res_gcd)
+        self.assertEqual(res_gcd.result_str, "6")
+
         res_abs = evaluate_expression("abs(-42)")
         self.assertIsNotNone(res_abs)
         self.assertEqual(res_abs.result_str, "42")

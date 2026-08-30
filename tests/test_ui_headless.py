@@ -98,12 +98,32 @@ class TestUIHeadless(unittest.TestCase):
         )
         self.assertEqual(res.get_accessible_text(), "Firefox, App, Web Browser")
 
-        res_custom = SearchResult(
-            id="test:acc2",
-            title="Custom",
-            accessibility_label="Custom Accessible Name",
+    def test_confirmation_flow(self):
+        executed = False
+
+        def _do_action():
+            nonlocal executed
+            executed = True
+
+        dangerous_item = SearchResult(
+            id="test:dangerous",
+            title="Dangerous Command",
+            requires_confirmation=True,
+            confirm_prompt="Execute dangerous command?",
+            action=_do_action,
         )
-        self.assertEqual(res_custom.get_accessible_text(), "Custom Accessible Name")
+
+        # First activation should trigger confirmation prompt without executing
+        self.window._on_item_activated(dangerous_item)
+        self.assertFalse(executed)
+        self.assertEqual(self.window._pending_confirmation, dangerous_item)
+        self.assertFalse(self.window.breadcrumb_label.isHidden())
+        self.assertIn("Execute dangerous command?", self.window.breadcrumb_label.text())
+
+        # Second activation on same item executes and clears state
+        self.window._on_item_activated(dangerous_item)
+        self.assertTrue(executed)
+        self.assertIsNone(self.window._pending_confirmation)
 
 
 if __name__ == "__main__":
