@@ -19,6 +19,7 @@ Configurations are located in:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
+| `config_version` | `integer` | `1` | Configuration schema version (used by migration engine) |
 | `shortcut` | `string` | `"Meta+Space"` | Global keyboard shortcut trigger |
 | `theme` | `string` | `"auto"` | Theme: `"auto"` (follows KDE Breeze), `"dark"`, or `"light"` |
 | `window_width` | `integer` | `680` | Launcher window width in pixels (400 - 1400) |

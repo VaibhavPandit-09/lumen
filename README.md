@@ -144,7 +144,7 @@ For full configuration options, see the [Configuration Guide](docs/CONFIGURATION
 ### Debian / Ubuntu (.deb)
 ```bash
 dpkg-buildpackage -us -uc -b
-sudo dpkg -i ../lumen_0.2.0-1_all.deb
+sudo dpkg -i ../lumen_0.4.0-1_all.deb
 ```
 
 ### Arch Linux (PKGBUILD)
@@ -154,9 +154,23 @@ makepkg -si
 
 ---
 
+## 🩺 System Health Diagnostics (`lumen doctor`)
+
+Lumen includes an integrated diagnostic engine to verify desktop integration and dependencies:
+
+```bash
+# Run human-readable diagnostic report
+lumen doctor
+
+# Machine-readable JSON output for automated agents
+lumen doctor --json
+```
+
+---
+
 ## 🧪 Testing
 
-Lumen comes with a comprehensive automated test suite (67 unit and headless integration tests):
+Lumen comes with a comprehensive automated test suite (**81 unit and headless integration tests**):
 
 ```bash
 # Run tests headlessly
@@ -172,8 +186,10 @@ QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -
 
 * [Architecture Blueprint](docs/ARCHITECTURE.md)
 * [Agent-First Development Guide](docs/AGENT_GUIDE.md)
+* [Extension & Custom Action API](docs/EXTENSION_API.md)
 * [Configuration Specification](docs/CONFIGURATION.md)
 * [Installation & Packaging](docs/INSTALLATION.md)
+* [Upgrading & Migrations Guide](docs/UPGRADING.md)
 
 ---
 

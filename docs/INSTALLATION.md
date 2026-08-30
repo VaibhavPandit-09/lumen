@@ -1,6 +1,6 @@
 # Lumen Installation & Setup Guide
 
-This guide explains how to install, configure, run, and uninstall Lumen on **KDE Plasma**.
+This guide explains how to install, configure, verify, update, and uninstall Lumen on **KDE Plasma**.
 
 ---
 
@@ -9,51 +9,80 @@ This guide explains how to install, configure, run, and uninstall Lumen on **KDE
 * **Desktop**: KDE Plasma 6 (or Plasma 5.27+)
 * **Session**: Wayland or X11
 * **Runtime**: Python 3.10 or newer with PyQt6
-* **Packages** (Ubuntu / Kubuntu / Debian):
+* **Prerequisites** (Debian / Ubuntu / Kubuntu):
   ```bash
   sudo apt install python3 python3-pyqt6
+  ```
+* **Prerequisites** (Arch Linux):
+  ```bash
+  sudo pacman -S python python-pyqt6
+  ```
+* **Prerequisites** (Fedora):
+  ```bash
+  sudo dnf install python3 python3-pyqt6
   ```
 
 ---
 
-## 🚀 Quick Installation
+## 🚀 End-User Installation (Recommended)
 
-### Method 1: Local User Install (Recommended)
+### 1. User-Local Installation
+The recommended way to install Lumen is using the non-root user-local installer:
 
-Run the included install script:
 ```bash
 git clone https://github.com/VaibhavPandit-09/lumen.git
 cd lumen
+
+# Optional: Validate system prerequisites without modifying files
+./install.sh --check
+
+# Install to ~/.local/bin and ~/.local/share
 ./install.sh
 ```
 
-This will:
-1. Link or install the `lumen` executable to `~/.local/bin/lumen`.
-2. Install the desktop entry to `~/.local/share/applications/lumen.desktop`.
-3. Create default configuration files in `~/.config/lumen/`.
-
-Make sure `~/.local/bin` is in your `$PATH`:
+### 2. Verify System Health
+Run `lumen doctor` to verify system health and desktop integration:
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
+lumen doctor
 ```
 
 ---
 
-## 📦 Packaging & Distribution
+## 🛠️ Developer Setup
 
-### Building Debian Package (`.deb`)
+If you are contributing to Lumen or building new providers:
+
 ```bash
-# Build package using standard debhelper
-dpkg-buildpackage -us -uc -b
+git clone https://github.com/VaibhavPandit-09/lumen.git
+cd lumen
 
-# Install generated deb
-sudo dpkg -i ../lumen_0.2.0-1_all.deb
+# Run test suite headlessly
+QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -v
+
+# Run directly from source tree without installation
+python3 -m lumen
 ```
 
-### Building Arch Linux Package (`PKGBUILD`)
+---
+
+## 📦 Package Distribution
+
+### Debian / Ubuntu (`.deb`)
+```bash
+# Build package
+dpkg-buildpackage -us -uc -b
+
+# Install generated package
+sudo dpkg -i ../lumen_0.4.0-1_all.deb
+```
+
+### Arch Linux (`PKGBUILD`)
 ```bash
 makepkg -si
 ```
+
+### Pipx Evaluation
+While `pipx` (`pipx install .`) is supported for installing the Python CLI entrypoint into an isolated virtual environment, desktop launcher applications require integrating with FreeDesktop `.desktop` files, scalable icons in `/usr/share/icons` or `~/.local/share/icons`, and KDE system settings. The included `./install.sh` script handles these desktop integrations automatically without requiring root permissions.
 
 ---
 
@@ -66,7 +95,7 @@ To bind Lumen to **`Meta + Space`** (Super+Space) in KDE Plasma:
 3. Click **Add New** → **Command**.
 4. Configure:
    * **Name**: `Lumen Launcher`
-   * **Command**: `lumen toggle`
+   * **Command**: `~/.local/bin/lumen toggle` (or `lumen toggle`)
    * **Shortcut**: `Meta+Space`
 5. Click **Apply**.
 
@@ -76,13 +105,13 @@ Now pressing `Meta + Space` will instantly open or toggle Lumen!
 
 ## 🔄 Running as a Background Daemon (Optional)
 
-Lumen includes a built-in single-instance daemon mode:
+Lumen includes a single-instance daemon mode:
 ```bash
 # Start background daemon
 lumen daemon &
 ```
 
-To autostart Lumen when logging into KDE:
+To autostart Lumen when logging into KDE Plasma:
 1. Open **System Settings** → **Autostart**.
 2. Click **Add...** → **Add Application...** → select **Lumen**.
 3. Click **OK**.
@@ -91,17 +120,14 @@ To autostart Lumen when logging into KDE:
 
 ## 🗑️ Uninstallation
 
-To remove Lumen from your system:
-
+### Normal Uninstallation (Preserves Configuration & Custom Actions)
 ```bash
-cd lumen
 ./uninstall.sh
 ```
 
-Or manually remove:
+### Complete Purge (Removes Configuration & Custom Actions)
 ```bash
-rm -f ~/.local/bin/lumen
-rm -f ~/.local/share/applications/lumen.desktop
-# Optional: remove configuration and commands
-# rm -rf ~/.config/lumen
+./uninstall.sh --purge
 ```
+
+See [docs/UPGRADING.md](file:///home/vaibhavp/workspace/gitdev/lumen/docs/UPGRADING.md) for full upgrade and migration instructions.

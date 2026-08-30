@@ -28,7 +28,8 @@ lumen/
 │   │   └── validator.py  # Contract validation & diagnostics
 │   ├── app_scanner.py  # XDG .desktop parsing, caching, and watching
 │   ├── calculator.py   # AST-based safe math & percentage evaluation
-│   ├── config.py       # JSONC config parser & schema validation
+│   ├── config.py       # JSONC config parser, schema validation, and migrations
+│   ├── doctor.py       # Health diagnostics & system inspection engine
 │   ├── fuzzy.py        # Multi-tier fuzzy & acronym search engine
 │   ├── logging.py      # Privacy-preserving diagnostic logging
 │   ├── models.py       # SearchResult, CommandItem, ItemCategory models

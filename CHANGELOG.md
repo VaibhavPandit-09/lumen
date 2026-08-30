@@ -5,6 +5,18 @@ All notable changes to **Lumen** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-30
+
+### Added
+- **Health & Diagnostic Subsystem (`lumen doctor`)**: Integrated diagnostic engine (`SystemDoctor`) executing 12 validation checks across runtime, Qt bindings, desktop sessions, PATH, executable integrity, desktop entries, icons, configs, actions, and IPC with human-readable and `--json` machine-readable output.
+- **Configuration Migrations & Automatic Backups**: `ConfigMigrator` framework with schema versioning (`config_version: 1`), automated timestamped backup creation (`config.jsonc.backup-YYYYMMDD-HHMMSS`), retention pruning (keeping newest 5 backups), and safe downgrade warnings.
+- **Single Source of Truth Versioning**: Authoritative version definition in `pyproject.toml` and `lumen/__init__.py`, synchronized across `PKGBUILD`, `debian/changelog`, and `lumen version [--json]`.
+- **Production User-Local Lifecycle Installer**: Rewritten `install.sh` supporting `--check`, `--version`, preflight dependency validation, daemon termination during upgrade, custom action and configuration preservation, and tailored shell PATH instructions (bash, zsh, fish).
+- **Safe Uninstaller & Purge**: Rewritten `uninstall.sh` supporting `--check`, normal uninstallation (preserves user configuration and actions in `~/.config/lumen`), and `--purge` with interactive confirmation.
+- **Automated Release Packaging Pipeline**: Added `.github/workflows/release.yml` for building source distribution artifacts, Debian packages (`.deb`), and generating `SHA256SUMS` checksums on version tags.
+- **Dedicated Upgrading & Lifecycle Documentation**: Added `docs/UPGRADING.md` covering upgrade safety guarantees, rollback procedures, and uninstallation.
+- **Expanded Test Suite**: Expanded test coverage to 81 automated tests (100% pass rate).
+
 ## [0.3.0] - 2026-08-30
 
 ### Added
