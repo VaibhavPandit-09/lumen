@@ -11,6 +11,7 @@ from pathlib import Path
 
 from lumen import __version__
 from lumen.core.config import LumenConfig
+from lumen.core.logging import debug, is_debug, set_debug
 from lumen.core.models import CommandItem
 from lumen.service.daemon import LumenAppDaemon, send_ipc_command
 from lumen.service.shortcuts import get_shortcut_setup_instructions
@@ -21,6 +22,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
     from lumen.providers.applications import ApplicationProvider
     from lumen.providers.calculator import CalculatorProvider
     from lumen.providers.commands import CommandProvider
+    from lumen.providers.krunner import KRunnerProvider
     from lumen.providers.locations import LocationsProvider
     from lumen.providers.system_actions import SystemActionsProvider
 
@@ -31,6 +33,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
         ApplicationProvider(hidden_applications=config.hidden_applications, enabled=config.providers.get("applications", True)),
         SystemActionsProvider(enabled=config.providers.get("system_actions", True)),
         LocationsProvider(enabled=config.providers.get("locations", True)),
+        KRunnerProvider(enabled=config.providers.get("krunner", True)),
     ]
 
     for p in providers:
@@ -39,7 +42,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
     results = []
     for p in providers:
         if p.enabled:
-            results.extend(p.search(query))
+            results.extend(p.safe_search(query))
 
     results.sort(key=lambda x: x.score, reverse=True)
     top_results = results[: config.max_results]
@@ -53,6 +56,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
                 "category": r.category,
                 "badge": r.badge,
                 "score": r.score,
+                "origin_provider": r.origin_provider,
             }
             for r in top_results
         ]
@@ -60,6 +64,8 @@ def cli_search(query: str, as_json: bool = False) -> None:
     else:
         print(f"Lumen Search Results for: '{query}'")
         print("=" * 60)
+        if not top_results:
+            print("No matching local results.")
         for idx, r in enumerate(top_results, 1):
             badge = f" [{r.badge}]" if r.badge else ""
             print(f"{idx}. {r.title}{badge}")
@@ -74,6 +80,7 @@ def main() -> None:
         description="Lumen — an agent-friendly command launcher for KDE Plasma",
     )
     parser.add_argument("-v", "--version", action="version", version=f"Lumen {__version__}")
+    parser.add_argument("-d", "--debug", action="store_true", help="Enable verbose debug logging")
 
     subparsers = parser.add_subparsers(dest="subcommand", help="Subcommands")
 
@@ -99,6 +106,10 @@ def main() -> None:
     config_p.add_argument("--terminal", action="store_true", help="Run in terminal (for add-command)")
 
     args = parser.parse_args()
+
+    if args.debug:
+        set_debug(True)
+        debug("CLI", "Verbose debug logging enabled.")
 
     # Handle subcommands
     if args.subcommand == "toggle":
