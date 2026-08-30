@@ -1,0 +1,86 @@
+// Example custom commands and nested submenus for Lumen
+{
+  "$schema": "https://raw.githubusercontent.com/VaibhavPandit-09/lumen/main/lumen/core/schema.json",
+  "commands": [
+    {
+      "name": "Docker Workflow",
+      "description": "Manage Docker containers and images",
+      "icon": "docker",
+      "category": "Development",
+      "subcommands": [
+        {
+          "name": "Start Containers",
+          "description": "docker compose up -d",
+          "icon": "system-run",
+          "command": "docker compose up -d",
+          "terminal": false
+        },
+        {
+          "name": "Stop Containers",
+          "description": "docker compose down",
+          "icon": "process-stop",
+          "command": "docker compose down",
+          "terminal": false
+        },
+        {
+          "name": "Live Container Logs",
+          "description": "docker compose logs -f",
+          "icon": "utilities-terminal",
+          "command": "docker compose logs -f",
+          "terminal": true
+        },
+        {
+          "name": "Prune System & Volumes",
+          "description": "docker system prune -af --volumes",
+          "icon": "edit-delete",
+          "command": "docker system prune -af --volumes",
+          "terminal": true
+        }
+      ]
+    },
+    {
+      "name": "Git Repository Tools",
+      "description": "Git branch, status, and synchronization shortcuts",
+      "icon": "vcs-branch",
+      "category": "Development",
+      "subcommands": [
+        {
+          "name": "Git Status & Fetch",
+          "description": "git fetch --all && git status",
+          "icon": "vcs-branch",
+          "command": "git fetch --all && git status",
+          "terminal": true
+        },
+        {
+          "name": "Git Prune Merged Branches",
+          "description": "Clean up local branches merged into main/master",
+          "icon": "edit-delete",
+          "command": "git branch --merged | grep -v '\\*\\|master\\|main' | xargs -n 1 git branch -d",
+          "terminal": true
+        }
+      ]
+    },
+    {
+      "name": "Quick SSH Hosts",
+      "description": "Connect to development and staging servers",
+      "icon": "network-server",
+      "category": "Remote",
+      "subcommands": [
+        {
+          "name": "Staging Server",
+          "description": "ssh dev@staging.example.com",
+          "icon": "network-server",
+          "command": "ssh dev@staging.example.com",
+          "terminal": true
+        },
+        {
+          "name": "Production Bastion",
+          "description": "ssh ops@bastion.example.com",
+          "icon": "network-server",
+          "command": "ssh ops@bastion.example.com",
+          "terminal": true
+        }
+      ]
+    }
+  ]
+}
