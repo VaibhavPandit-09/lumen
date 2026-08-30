@@ -39,6 +39,24 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ---
 
+## 📦 Packaging & Distribution
+
+### Building Debian Package (`.deb`)
+```bash
+# Build package using standard debhelper
+dpkg-buildpackage -us -uc -b
+
+# Install generated deb
+sudo dpkg -i ../lumen_0.2.0-1_all.deb
+```
+
+### Building Arch Linux Package (`PKGBUILD`)
+```bash
+makepkg -si
+```
+
+---
+
 ## ⌨️ Configuring the Global Shortcut (Meta + Space)
 
 To bind Lumen to **`Meta + Space`** (Super+Space) in KDE Plasma:

@@ -27,7 +27,7 @@ Lumen is an agent-friendly command launcher and command palette built natively f
      v              v              v
 [ Applications ] [ Commands ] [ System Actions ]
 [ Calculator   ] [ Locations] [ Recent Files   ]
-[ Clipboard    ] [ Web Search]
+[ Clipboard    ] [ Web Search] [ KRunner (opt) ]
      |              |              |
      +--------------+--------------+
                     |
@@ -38,6 +38,8 @@ Lumen is an agent-friendly command launcher and command palette built natively f
     - Safe Process Runner (runner.py)
     - Safe AST Calculator (calculator.py)
     - JSONC Config Engine (config.py & schema.json)
+    - Privacy Logging Subsystem (logging.py)
+    - Window Animation Manager (animations.py)
 ```
 
 ---
@@ -48,8 +50,9 @@ Lumen is an agent-friendly command launcher and command palette built natively f
 * **Window Properties**:
   * `Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint`
   * `Qt.WidgetAttribute.WA_TranslucentBackground`
+* **Animations**: Native Qt property animations (`QPropertyAnimation` over `windowOpacity`) running non-blocking 120ms transitions.
 * **Rendering**: High-performance custom item painting via `QStyledItemDelegate` (`ResultItemDelegate`), avoiding heavy widget overhead and allowing instantaneous 60+ FPS keyboard scrolling.
-* **Theme Integration**: Automatic detection of KDE Breeze dark/light palette with real-time luminance checking and crisp typography.
+* **Theme Integration**: Automatic detection of KDE Breeze dark/light palette with real-time luminance checking, custom vector icon assets, and crisp typography.
 
 ---
 

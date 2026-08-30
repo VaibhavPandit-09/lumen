@@ -15,13 +15,72 @@ Lumen is engineered so that **AI coding agents** can easily inspect the system, 
 
 ---
 
-## 📂 Configuration Paths
+## 🗺️ Repository Map
 
-| File | Purpose |
-|---|---|
-| `~/.config/lumen/config.jsonc` | Global preferences (theme, shortcut, window width, max results, provider toggles, hidden apps) |
-| `~/.config/lumen/commands.jsonc` | Custom commands, nested submenus, developer workflows |
-| `lumen/core/schema.json` | JSON Schema for validation and editor autocompletion |
+```
+lumen/
+├── assets/             # Vector icon assets (lumen.svg)
+├── core/               # Matching, scanning, configuration, logging, and execution
+│   ├── app_scanner.py  # XDG .desktop parsing, caching, and watching
+│   ├── calculator.py   # AST-based safe math & percentage evaluation
+│   ├── config.py       # JSONC config parser & schema validation
+│   ├── fuzzy.py        # Multi-tier fuzzy & acronym search engine
+│   ├── logging.py      # Privacy-preserving diagnostic logging
+│   ├── models.py       # SearchResult, CommandItem, ItemCategory models
+│   ├── runner.py       # Detached process & terminal command execution
+│   └── schema.json     # Formal configuration schema
+├── providers/          # Modular search providers
+│   ├── base.py         # BaseProvider with safe_search error boundary
+│   ├── applications.py # Desktop application provider
+│   ├── calculator.py   # Math calculation provider
+│   ├── clipboard.py    # Clipboard integration provider
+│   ├── commands.py     # Custom user/agent commands & submenus
+│   ├── krunner.py      # Optional KDE Plasma KRunner D-Bus adapter
+│   ├── locations.py    # Standard folders provider
+│   ├── recent_files.py # FreeDesktop recent documents (.xbel)
+│   ├── system_actions.py # KDE session & settings actions
+│   └── web_search.py   # Fallback browser search provider
+├── service/            # Lifecycle & IPC daemon
+│   ├── daemon.py       # Single-instance Unix socket server
+│   └── shortcuts.py    # Global shortcut helpers
+├── ui/                 # PyQt6 command palette interface
+│   ├── animations.py   # Subtle 120ms window transitions
+│   ├── launcher_window.py # Main floating overlay window
+│   ├── result_list.py  # High-performance custom item delegate
+│   ├── search_bar.py   # Keyboard-first search input widget
+│   └── theme.py        # Breeze theme & color scheme engine
+└── tests/              # 47 unit & headless integration tests
+```
+
+---
+
+## 🧩 Adding a New Search Provider
+
+To add a new provider:
+1. Subclass `BaseProvider` in `lumen/providers/<your_provider>.py`.
+2. Implement `search(self, query: str) -> List[SearchResult]`.
+3. Register the provider in `LauncherWindow._init_providers()` in `lumen/ui/launcher_window.py`.
+4. Add automated unit tests in `tests/test_<your_provider>.py`.
+
+```python
+from typing import List
+from lumen.core.models import ItemCategory, SearchResult
+from lumen.providers.base import BaseProvider
+
+class GitRepoProvider(BaseProvider):
+    def __init__(self, enabled: bool = True):
+        super().__init__("git_repos", enabled=enabled)
+
+    def search(self, query: str) -> List[SearchResult]:
+        if not self.enabled or not query:
+            return []
+        # Return SearchResult items with action callback
+        return []
+```
+
+---
+
+## 📂 Configuration Paths
 
 ---
 

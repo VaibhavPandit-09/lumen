@@ -28,15 +28,17 @@ However, Lumen is an **independent, standalone KDE application** built with the 
 
 ## ✨ Features
 
-* 🚀 **Instant Application Launching**: Discovers `.desktop` applications from system, user, Flatpak, and Snap directories with live filesystem watching (`QFileSystemWatcher`).
-* 🎯 **Intelligent Fuzzy & Acronym Matching**: Subsequence matching with word-boundary bonuses and acronym recognition (e.g. `ksp` for `KSystemLog`, `ff` for `Firefox`).
+* 🚀 **Instant Application Launching**: Discovers `.desktop` applications from system, user, Flatpak, and Snap directories with live filesystem watching (`QFileSystemWatcher`) and intelligent deduplication.
+* 🎯 **Intelligent Fuzzy & Acronym Matching**: Multi-tier subsequence matching with word-boundary bonuses and acronym recognition (e.g. `ksp` for `KSystemLog`, `ff` for `Firefox`, `gc` for `Google Chrome`).
 * 🌲 **Nested Command Groups & Submenus**: Group commands logically (`Development`, `Docker`, `Git`, `System`) with interactive drill-down (`Tab` / `Right`) or direct unified search.
 * ⚡ **KDE System Actions**: Built-in actions for Lock, Logout, Suspend, Restart, Shutdown, and instant access to KDE System Settings panels.
-* 🧮 **Instant Calculator**: Safe arithmetic, percentages (`15% of 400`), trigonometry, powers, and roots (`sqrt(144)`) with one-press copy to clipboard.
+* 🧩 **Optional KRunner Interoperability**: Optional D-Bus adapter querying KDE Plasma 6 KRunner runners when available, with graceful degradation.
+* 🧮 **Instant Safe Calculator**: Arithmetic, percentages (`15% of 400`), trigonometry, powers, and roots (`sqrt(144)`) with one-press copy to clipboard.
 * 📁 **Common Locations & Recent Files**: Rapid navigation to standard folders (Home, Downloads, Documents, etc.) and recently used documents (`recently-used.xbel`).
 * 📋 **Clipboard Search**: Integrates directly with KDE clipboard history without spawning competing daemons.
 * 🌐 **Fallback Web Search**: Intelligently falls back to searching your query in your configured default browser.
-* 🎨 **Breeze & Adaptive Theme**: Seamlessly adapts to KDE dark and light color schemes with subtle elevation and typography.
+* ✨ **Subtle 120ms Transitions**: Non-blocking fluid entry and dismissal animations.
+* 🎨 **Breeze & Adaptive Theme**: Seamlessly adapts to KDE dark and light color schemes with custom SVG icon assets.
 * 🤖 **AI-Agent Ready**: Clear JSONC configuration, validated by JSON Schema, with zero opaque runtime state.
 
 ---
@@ -132,9 +134,24 @@ For full configuration options, see the [Configuration Guide](docs/CONFIGURATION
 
 ---
 
+## 📦 Packaging & Distribution
+ 
+### Debian / Ubuntu (.deb)
+```bash
+dpkg-buildpackage -us -uc -b
+sudo dpkg -i ../lumen_0.2.0-1_all.deb
+```
+
+### Arch Linux (PKGBUILD)
+```bash
+makepkg -si
+```
+
+---
+
 ## 🧪 Testing
 
-Lumen comes with an automated unit and integration test suite:
+Lumen comes with a comprehensive automated test suite (47 unit and headless integration tests):
 
 ```bash
 # Run tests headlessly
