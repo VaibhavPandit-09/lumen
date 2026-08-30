@@ -23,11 +23,14 @@ from lumen.core.config import LumenConfig
 from lumen.core.fuzzy import score_item
 from lumen.core.logging import debug, info
 from lumen.core.models import ItemCategory, SearchResult
+from lumen.providers.actions import CustomActionsProvider
 from lumen.providers.applications import ApplicationProvider
 from lumen.providers.base import BaseProvider
 from lumen.providers.calculator import CalculatorProvider
 from lumen.providers.clipboard import ClipboardProvider
 from lumen.providers.commands import CommandProvider
+from lumen.providers.conversions import ConversionsProvider
+from lumen.providers.currency import CurrencyProvider
 from lumen.providers.krunner import KRunnerProvider
 from lumen.providers.locations import LocationsProvider
 from lumen.providers.recent_files import RecentFilesProvider
@@ -37,6 +40,7 @@ from lumen.ui.animations import WindowAnimationManager
 from lumen.ui.result_list import ResultItemDelegate, ResultListWidget
 from lumen.ui.search_bar import SearchBar
 from lumen.ui.theme import generate_stylesheet, get_theme
+from lumen.ui.tray import LumenTrayCompanion
 
 
 class LauncherWindow(QWidget):
@@ -51,9 +55,17 @@ class LauncherWindow(QWidget):
             duration_ms=self.config.animation_duration_ms if self.config.enable_animations else 0,
         )
 
+        # Optional tray companion
+        self.tray_companion: Optional[LumenTrayCompanion] = None
+        if self.config.enable_tray:
+            self.tray_companion = LumenTrayCompanion(self)
+
         # Provider list
         self.providers: List[BaseProvider] = []
         self._init_providers()
+
+        # Confirmation state tracking
+        self._pending_confirmation: Optional[SearchResult] = None
 
         # Navigation stack for submenus
         # Each entry is a tuple: (title: str, items: List[SearchResult])
@@ -95,6 +107,10 @@ class LauncherWindow(QWidget):
             commands=self.config.commands,
             enabled=p_cfg.get("commands", True),
         )
+        self.act_provider = CustomActionsProvider(
+            actions_dir=self.config.actions_dir,
+            enabled=p_cfg.get("actions", True),
+        )
         self.sys_provider = SystemActionsProvider(
             enabled=p_cfg.get("system_actions", True),
         )
@@ -103,6 +119,12 @@ class LauncherWindow(QWidget):
         )
         self.calc_provider = CalculatorProvider(
             enabled=p_cfg.get("calculator", True) and self.config.calculator_auto_evaluate,
+        )
+        self.conv_provider = ConversionsProvider(
+            enabled=p_cfg.get("conversions", True),
+        )
+        self.cur_provider = CurrencyProvider(
+            enabled=p_cfg.get("currency", True),
         )
         self.recent_provider = RecentFilesProvider(
             enabled=p_cfg.get("recent_files", True),
@@ -120,6 +142,9 @@ class LauncherWindow(QWidget):
 
         self.providers = [
             self.calc_provider,
+            self.conv_provider,
+            self.cur_provider,
+            self.act_provider,
             self.cmd_provider,
             self.app_provider,
             self.sys_provider,
@@ -198,16 +223,18 @@ class LauncherWindow(QWidget):
         """Connects search and navigation events."""
         self.search_bar.textChanged.connect(self._on_search_query_changed)
         self.search_bar.navigate_signal.connect(self._on_navigate_list)
-        self.search_bar.activate_signal.connect(self._on_activate_item)
+        self.search_bar.activate_signal.connect(self._on_item_activated)
         self.search_bar.dismiss_signal.connect(self.dismiss)
         self.search_bar.drill_down_signal.connect(self._on_drill_down)
         self.search_bar.pop_level_signal.connect(self._on_pop_level)
 
-        self.result_list.itemActivated.connect(lambda _: self._on_activate_item())
-        self.result_list.itemClicked.connect(lambda _: self._on_activate_item())
+        self.result_list.itemActivated.connect(lambda _: self._on_item_activated())
+        self.result_list.itemClicked.connect(lambda _: self._on_item_activated())
 
     def _on_search_query_changed(self, query: str) -> None:
         """Called whenever search bar text changes."""
+        self._pending_confirmation = None
+        self._update_breadcrumb()
         self.update_results(query)
 
     def _on_navigate_list(self, key: int) -> None:
@@ -216,20 +243,34 @@ class LauncherWindow(QWidget):
         elif key in (Qt.Key.Key_Up, Qt.Key.Key_PageUp):
             self.result_list.select_previous()
 
-    def _on_activate_item(self) -> None:
-        """Executes currently selected item or enters submenu."""
-        selected = self.result_list.get_selected_result()
-        if not selected:
+    def _on_item_activated(self, item: Optional[SearchResult] = None) -> None:
+        """Executes the currently selected item or drills into submenu, handling confirmation."""
+        if not item:
+            item = self.result_list.get_selected_result()
+        if not item:
             return
 
-        # If item has subcommands and query is not an exact match on action, enter submenu
-        if selected.has_subcommands():
-            self.push_submenu(selected.title, selected.subcommands)
+        # If item requires subcommands / drill down
+        if item.has_subcommands():
+            self.push_submenu(item.title, item.subcommands)
             return
 
-        # Execute action and dismiss launcher
+        # Handle Confirmation Requirement
+        if item.requires_confirmation:
+            if self._pending_confirmation != item:
+                self._pending_confirmation = item
+                prompt = item.confirm_prompt or f"Confirm: {item.title}?"
+                self.breadcrumb_label.setText(f"⚠️ {prompt} — Press Enter again to execute (Esc to cancel)")
+                self.breadcrumb_label.setStyleSheet("color: #F59E0B; font-size: 11px; font-weight: bold;")
+                self.breadcrumb_label.setVisible(True)
+                return
+
+        # Reset confirmation state
+        self._pending_confirmation = None
+
+        # Execute action
         self.dismiss()
-        QTimer.singleShot(50, lambda: selected.execute())
+        item.execute()
 
     def _on_drill_down(self) -> None:
         """Enters submenu if current item has subcommands."""

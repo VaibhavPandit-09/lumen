@@ -48,7 +48,7 @@
     "enable_animations": {
       "type": "boolean",
       "default": true,
-      "description": "Enable subtle entry and dismissal transitions"
+      "description": "Enable subtle entry and dismissal transitions for the launcher window"
     },
     "animation_duration_ms": {
       "type": "integer",
@@ -57,14 +57,28 @@
       "maximum": 500,
       "description": "Duration of window transitions in milliseconds"
     },
+    "actions_dir": {
+      "type": "string",
+      "default": "~/.config/lumen/actions",
+      "description": "Directory containing custom action manifests and user scripts"
+    },
+    "enable_tray": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable optional KDE Plasma system tray companion icon"
+    },
     "providers": {
       "type": "object",
+      "description": "Enable or disable individual search providers",
       "properties": {
         "applications": { "type": "boolean", "default": true },
         "commands": { "type": "boolean", "default": true },
+        "actions": { "type": "boolean", "default": true },
         "system_actions": { "type": "boolean", "default": true },
         "locations": { "type": "boolean", "default": true },
         "calculator": { "type": "boolean", "default": true },
+        "conversions": { "type": "boolean", "default": true },
+        "currency": { "type": "boolean", "default": true },
         "recent_files": { "type": "boolean", "default": true },
         "clipboard": { "type": "boolean", "default": true },
         "web_search": { "type": "boolean", "default": true },

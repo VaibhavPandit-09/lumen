@@ -12,6 +12,8 @@ from typing import Any, Callable, Dict, List, Optional
 class ItemCategory(str, Enum):
     APPLICATION = "Applications"
     COMMAND = "Commands"
+    CUSTOM_ACTION = "Actions"
+    CONVERSION = "Conversions"
     SYSTEM = "System Actions"
     LOCATION = "Locations"
     CALCULATION = "Calculator"
@@ -39,6 +41,10 @@ class SearchResult:
     origin_provider: str = ""
     accessibility_label: str = ""
     is_empty_state: bool = False
+    requires_confirmation: bool = False
+    confirm_prompt: str = ""
+    action_id: str = ""
+    copy_value: str = ""
 
     def execute(self) -> Any:
         """Executes the action associated with this search result."""

@@ -184,9 +184,8 @@ DEFAULT_COMMANDS_JSONC = """// Lumen User & Agent Commands
 
 @dataclass
 class LumenConfig:
-    config_dir: Path = field(
-        default_factory=lambda: Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "lumen"
-    )
+    """Strongly typed application configuration."""
+    config_dir: Optional[Path] = None
     shortcut: str = "Meta+Space"
     theme: str = "auto"
     window_width: int = 680
@@ -195,31 +194,40 @@ class LumenConfig:
     show_badges: bool = True
     enable_animations: bool = True
     animation_duration_ms: int = 120
-    providers: Dict[str, bool] = field(
-        default_factory=lambda: {
-            "applications": True,
-            "commands": True,
-            "system_actions": True,
-            "locations": True,
-            "calculator": True,
-            "recent_files": True,
-            "clipboard": True,
-            "web_search": True,
-            "krunner": True,
-        }
-    )
+    actions_dir: str = "~/.config/lumen/actions"
+    enable_tray: bool = False
+    providers: Dict[str, bool] = field(default_factory=lambda: {
+        "applications": True,
+        "commands": True,
+        "actions": True,
+        "system_actions": True,
+        "locations": True,
+        "calculator": True,
+        "conversions": True,
+        "currency": True,
+        "recent_files": True,
+        "clipboard": True,
+        "web_search": True,
+        "krunner": True,
+    })
     hidden_applications: List[str] = field(default_factory=list)
     web_search_engine: str = "https://duckduckgo.com/?q=%s"
     calculator_auto_evaluate: bool = True
     commands: List[CommandItem] = field(default_factory=list)
 
     @property
+    def resolved_config_dir(self) -> Path:
+        if self.config_dir:
+            return Path(os.path.expanduser(str(self.config_dir)))
+        return Path(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))) / "lumen"
+
+    @property
     def config_file(self) -> Path:
-        return self.config_dir / "config.jsonc"
+        return self.resolved_config_dir / "config.jsonc"
 
     @property
     def commands_file(self) -> Path:
-        return self.config_dir / "commands.jsonc"
+        return self.resolved_config_dir / "commands.jsonc"
 
     def ensure_config_files(self) -> None:
         """Creates default configuration files if they do not exist."""
@@ -268,20 +276,25 @@ class LumenConfig:
                 text = self.config_file.read_text(encoding="utf-8")
                 data = parse_jsonc(text)
                 self.shortcut = str(data.get("shortcut", self.shortcut))
-                self.theme = str(data.get("theme", self.theme))
-                self.window_width = int(data.get("window_width", self.window_width))
-                self.max_results = int(data.get("max_results", self.max_results))
-                self.opacity = float(data.get("opacity", self.opacity))
-                self.show_badges = bool(data.get("show_badges", self.show_badges))
-                self.enable_animations = bool(data.get("enable_animations", self.enable_animations))
-                self.animation_duration_ms = int(data.get("animation_duration_ms", self.animation_duration_ms))
-                if isinstance(data.get("providers"), dict):
-                    self.providers.update(data["providers"])
-                if isinstance(data.get("hidden_applications"), list):
-                    self.hidden_applications = [str(x) for x in data["hidden_applications"]]
-                self.web_search_engine = str(data.get("web_search_engine", self.web_search_engine))
+                cfg = parse_jsonc(text)
+                self.shortcut = str(cfg.get("shortcut", self.shortcut))
+                self.theme = str(cfg.get("theme", self.theme))
+                self.window_width = int(cfg.get("window_width", self.window_width))
+                self.max_results = int(cfg.get("max_results", self.max_results))
+                self.opacity = float(cfg.get("opacity", self.opacity))
+                self.show_badges = bool(cfg.get("show_badges", self.show_badges))
+                self.enable_animations = cfg.get("enable_animations", self.enable_animations)
+                self.animation_duration_ms = cfg.get("animation_duration_ms", self.animation_duration_ms)
+                self.actions_dir = cfg.get("actions_dir", self.actions_dir)
+                self.enable_tray = cfg.get("enable_tray", self.enable_tray)
+
+                if "providers" in cfg and isinstance(cfg["providers"], dict):
+                    self.providers.update(cfg["providers"])
+                if isinstance(cfg.get("hidden_applications"), list):
+                    self.hidden_applications = [str(x) for x in cfg["hidden_applications"]]
+                self.web_search_engine = str(cfg.get("web_search_engine", self.web_search_engine))
                 self.calculator_auto_evaluate = bool(
-                    data.get("calculator_auto_evaluate", self.calculator_auto_evaluate)
+                    cfg.get("calculator_auto_evaluate", self.calculator_auto_evaluate)
                 )
                 if "commands" in data and isinstance(data["commands"], list):
                     self.commands = [CommandItem.from_dict(c) for c in data["commands"] if isinstance(c, dict)]

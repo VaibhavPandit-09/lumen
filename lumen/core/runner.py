@@ -142,6 +142,81 @@ def launch_shell_command(
         return False
 
 
+def copy_to_clipboard(text: str) -> bool:
+    """Copies text to the system clipboard using Qt or system tools."""
+    if not text:
+        return False
+
+    # Try Qt clipboard first if application instance exists
+    try:
+        from PyQt6.QtWidgets import QApplication
+        app = QApplication.instance()
+        if app:
+            cb = app.clipboard()
+            if cb:
+                cb.setText(text)
+                return True
+    except Exception:
+        pass
+
+    # Fallback to wl-copy / xclip
+    if shutil.which("wl-copy"):
+        try:
+            subprocess.run(["wl-copy"], input=text.encode("utf-8"), check=True, timeout=2)
+            return True
+        except Exception:
+            pass
+
+    if shutil.which("xclip"):
+        try:
+            subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode("utf-8"), check=True, timeout=2)
+            return True
+        except Exception:
+            pass
+
+    return False
+
+
+def launch_in_terminal(
+    argv: List[str],
+    cwd: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None,
+) -> bool:
+    """Launches an argv command list inside the default terminal emulator."""
+    if not argv:
+        return False
+
+    full_env = os.environ.copy()
+    if env:
+        full_env.update(env)
+
+    target_cwd = cwd if (cwd and os.path.isdir(cwd)) else os.path.expanduser("~")
+    term = find_terminal_emulator()
+
+    if not term:
+        # Fallback to direct background launch
+        try:
+            subprocess.Popen(argv, cwd=target_cwd, env=full_env, start_new_session=True, close_fds=True)
+            return True
+        except Exception:
+            return False
+
+    # Wrap command to keep terminal open on exit if requested
+    cmd_str = " ".join(shlex.quote(a) for a in argv)
+    if "konsole" in term:
+        term_args = [term, "-e", "bash", "-c", f"{cmd_str}; echo ''; read -p 'Press Enter to close...'"]
+    elif "gnome-terminal" in term:
+        term_args = [term, "--", "bash", "-c", f"{cmd_str}; echo ''; read -p 'Press Enter to close...'"]
+    else:
+        term_args = [term, "-e", "bash", "-c", f"{cmd_str}; echo ''; read -p 'Press Enter to close...'"]
+
+    try:
+        subprocess.Popen(term_args, cwd=target_cwd, env=full_env, start_new_session=True, close_fds=True)
+        return True
+    except Exception:
+        return False
+
+
 def open_path_or_url(target: str) -> bool:
     """Opens a local file, folder, or web URL with the default handler (xdg-open / kde-open6)."""
     if not target:
