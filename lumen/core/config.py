@@ -80,6 +80,7 @@ DEFAULT_CONFIG_JSONC = """// Lumen Main Configuration
 // An agent-friendly command launcher for KDE Plasma
 {
   "$schema": "https://raw.githubusercontent.com/VaibhavPandit-09/lumen/main/lumen/core/schema.json",
+  "config_version": 1,
 
   // Global shortcut to toggle Lumen
   "shortcut": "Meta+Space",
@@ -182,10 +183,81 @@ DEFAULT_COMMANDS_JSONC = """// Lumen User & Agent Commands
 """
 
 
+import datetime
+import shutil
+
+CURRENT_CONFIG_VERSION = 1
+MAX_CONFIG_BACKUPS = 5
+
+
+class ConfigMigrator:
+    """Handles schema versioning, automatic backups, and migrations."""
+
+    @staticmethod
+    def create_backup(config_path: Path) -> Optional[Path]:
+        """Creates a timestamped backup of the config file and prunes old backups."""
+        if not config_path.exists():
+            return None
+
+        try:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+            backup_path = config_path.parent / f"{config_path.name}.backup-{timestamp}"
+            shutil.copy2(config_path, backup_path)
+
+            # Prune old backups, keeping newest MAX_CONFIG_BACKUPS
+            backups = sorted(
+                config_path.parent.glob(f"{config_path.name}.backup-*"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old_backup in backups[MAX_CONFIG_BACKUPS:]:
+                try:
+                    old_backup.unlink()
+                except Exception:
+                    pass
+
+            return backup_path
+        except Exception as e:
+            print(f"[Lumen Config] Warning: Failed to create backup ({e})")
+            return None
+
+    @staticmethod
+    def migrate_if_needed(config_path: Path, data: Dict[str, Any]) -> tuple[Dict[str, Any], bool]:
+        """
+        Detects config version and applies sequential migrations if needed.
+        Returns (migrated_data, was_migrated).
+        """
+        raw_version = data.get("config_version", 1)
+        try:
+            version = int(raw_version)
+        except (ValueError, TypeError):
+            version = 1
+
+        if version > CURRENT_CONFIG_VERSION:
+            print(
+                f"[Lumen Config] Notice: Configuration version {version} is newer than application supported version {CURRENT_CONFIG_VERSION}. Running in compatibility mode."
+            )
+            return data, False
+
+        if version == CURRENT_CONFIG_VERSION:
+            return data, False
+
+        # Migration needed (version < CURRENT_CONFIG_VERSION)
+        ConfigMigrator.create_backup(config_path)
+        migrated = dict(data)
+
+        # Apply sequential version steps (e.g. 1 -> 2 in future)
+        # while version < CURRENT_CONFIG_VERSION: ...
+
+        migrated["config_version"] = CURRENT_CONFIG_VERSION
+        return migrated, True
+
+
 @dataclass
 class LumenConfig:
     """Strongly typed application configuration."""
     config_dir: Optional[Path] = None
+    config_version: int = CURRENT_CONFIG_VERSION
     shortcut: str = "Meta+Space"
     theme: str = "auto"
     window_width: int = 680
@@ -232,7 +304,7 @@ class LumenConfig:
     def ensure_config_files(self) -> None:
         """Creates default configuration files if they do not exist."""
         try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
+            self.resolved_config_dir.mkdir(parents=True, exist_ok=True)
 
             if not self.config_file.exists():
                 self.config_file.write_text(DEFAULT_CONFIG_JSONC, encoding="utf-8")
@@ -275,26 +347,34 @@ class LumenConfig:
             if self.config_file.exists():
                 text = self.config_file.read_text(encoding="utf-8")
                 data = parse_jsonc(text)
-                self.shortcut = str(data.get("shortcut", self.shortcut))
-                cfg = parse_jsonc(text)
-                self.shortcut = str(cfg.get("shortcut", self.shortcut))
-                self.theme = str(cfg.get("theme", self.theme))
-                self.window_width = int(cfg.get("window_width", self.window_width))
-                self.max_results = int(cfg.get("max_results", self.max_results))
-                self.opacity = float(cfg.get("opacity", self.opacity))
-                self.show_badges = bool(cfg.get("show_badges", self.show_badges))
-                self.enable_animations = cfg.get("enable_animations", self.enable_animations)
-                self.animation_duration_ms = cfg.get("animation_duration_ms", self.animation_duration_ms)
-                self.actions_dir = cfg.get("actions_dir", self.actions_dir)
-                self.enable_tray = cfg.get("enable_tray", self.enable_tray)
 
-                if "providers" in cfg and isinstance(cfg["providers"], dict):
-                    self.providers.update(cfg["providers"])
-                if isinstance(cfg.get("hidden_applications"), list):
-                    self.hidden_applications = [str(x) for x in cfg["hidden_applications"]]
-                self.web_search_engine = str(cfg.get("web_search_engine", self.web_search_engine))
+                # Migrate if needed
+                data, migrated = ConfigMigrator.migrate_if_needed(self.config_file, data)
+                if migrated:
+                    try:
+                        self.config_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+                    except Exception:
+                        pass
+
+                self.config_version = int(data.get("config_version", CURRENT_CONFIG_VERSION))
+                self.shortcut = str(data.get("shortcut", self.shortcut))
+                self.theme = str(data.get("theme", self.theme))
+                self.window_width = int(data.get("window_width", self.window_width))
+                self.max_results = int(data.get("max_results", self.max_results))
+                self.opacity = float(data.get("opacity", self.opacity))
+                self.show_badges = bool(data.get("show_badges", self.show_badges))
+                self.enable_animations = bool(data.get("enable_animations", self.enable_animations))
+                self.animation_duration_ms = int(data.get("animation_duration_ms", self.animation_duration_ms))
+                self.actions_dir = str(data.get("actions_dir", self.actions_dir))
+                self.enable_tray = bool(data.get("enable_tray", self.enable_tray))
+
+                if "providers" in data and isinstance(data["providers"], dict):
+                    self.providers.update(data["providers"])
+                if isinstance(data.get("hidden_applications"), list):
+                    self.hidden_applications = [str(x) for x in data["hidden_applications"]]
+                self.web_search_engine = str(data.get("web_search_engine", self.web_search_engine))
                 self.calculator_auto_evaluate = bool(
-                    cfg.get("calculator_auto_evaluate", self.calculator_auto_evaluate)
+                    data.get("calculator_auto_evaluate", self.calculator_auto_evaluate)
                 )
                 if "commands" in data and isinstance(data["commands"], list):
                     self.commands = [CommandItem.from_dict(c) for c in data["commands"] if isinstance(c, dict)]
@@ -328,7 +408,7 @@ class LumenConfig:
     def save_commands(self) -> None:
         """Persists current commands list to commands.jsonc."""
         try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
+            self.resolved_config_dir.mkdir(parents=True, exist_ok=True)
             data = {
                 "$schema": "https://raw.githubusercontent.com/VaibhavPandit-09/lumen/main/lumen/core/schema.json",
                 "commands": [c.to_dict() for c in self.commands],
@@ -336,3 +416,4 @@ class LumenConfig:
             self.commands_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except (OSError, PermissionError) as e:
             print(f"[Lumen Config] Warning: Could not write to {self.commands_file}: {e}")
+

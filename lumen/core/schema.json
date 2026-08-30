@@ -8,6 +8,11 @@
       "type": "string",
       "description": "URL to the configuration schema"
     },
+    "config_version": {
+      "type": "integer",
+      "default": 1,
+      "description": "Configuration format version for migration management"
+    },
     "shortcut": {
       "type": "string",
       "default": "Meta+Space",
