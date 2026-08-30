@@ -29,17 +29,22 @@ However, Lumen is an **independent, standalone KDE application** built with the 
 ## ✨ Features
 
 * 🚀 **Instant Application Launching**: Discovers `.desktop` applications from system, user, Flatpak, and Snap directories with live filesystem watching (`QFileSystemWatcher`) and intelligent deduplication.
+* 🛠️ **Custom Action Scripting Engine**: Create powerful standalone actions and workflows in `~/.config/lumen/actions/` using declarative `.jsonc` manifests with safe execution, argument substitution, and timeouts.
+* ⚠️ **Destructive Action Confirmation**: Dangerous actions declare `"confirm": true` to require an explicit interactive confirmation step before execution.
 * 🎯 **Intelligent Fuzzy & Acronym Matching**: Multi-tier subsequence matching with word-boundary bonuses and acronym recognition (e.g. `ksp` for `KSystemLog`, `ff` for `Firefox`, `gc` for `Google Chrome`).
 * 🌲 **Nested Command Groups & Submenus**: Group commands logically (`Development`, `Docker`, `Git`, `System`) with interactive drill-down (`Tab` / `Right`) or direct unified search.
 * ⚡ **KDE System Actions**: Built-in actions for Lock, Logout, Suspend, Restart, Shutdown, and instant access to KDE System Settings panels.
 * 🧩 **Optional KRunner Interoperability**: Optional D-Bus adapter querying KDE Plasma 6 KRunner runners when available, with graceful degradation.
-* 🧮 **Instant Safe Calculator**: Arithmetic, percentages (`15% of 400`), trigonometry, powers, and roots (`sqrt(144)`) with one-press copy to clipboard.
+* 🧮 **Advanced Safe Calculator**: Arithmetic, trigonometry (`sin(45 deg)`), powers, roots, factorials, GCD, and LCM with safe AST sandboxing.
+* 📐 **Physical & Data Unit Conversions**: Instant deterministic conversion for length, mass, temperature, speed, area, volume, data size, and time (e.g. `100 km in miles`, `72 F in C`, `50 km/h in mph`, `2 GB in MB`).
+* 💱 **Cached Currency Conversions**: Offline-capable currency conversions (e.g. `100 USD in EUR`, `50 GBP to JPY`, `$100 to EUR`).
 * 📁 **Common Locations & Recent Files**: Rapid navigation to standard folders (Home, Downloads, Documents, etc.) and recently used documents (`recently-used.xbel`).
 * 📋 **Clipboard Search**: Integrates directly with KDE clipboard history without spawning competing daemons.
 * 🌐 **Fallback Web Search**: Intelligently falls back to searching your query in your configured default browser.
+* 🗔 **Optional System Tray Companion**: Clean companion tray icon for toggling, reloading, and status.
 * ✨ **Subtle 120ms Transitions**: Non-blocking fluid entry and dismissal animations.
 * 🎨 **Breeze & Adaptive Theme**: Seamlessly adapts to KDE dark and light color schemes with custom SVG icon assets.
-* 🤖 **AI-Agent Ready**: Clear JSONC configuration, validated by JSON Schema, with zero opaque runtime state.
+* 🤖 **AI-Agent Ready**: Comprehensive CLI inspection (`lumen actions list --json`, `lumen actions validate --json`) and clean JSON schema validation.
 
 ---
 
@@ -151,7 +156,7 @@ makepkg -si
 
 ## 🧪 Testing
 
-Lumen comes with a comprehensive automated test suite (47 unit and headless integration tests):
+Lumen comes with a comprehensive automated test suite (67 unit and headless integration tests):
 
 ```bash
 # Run tests headlessly

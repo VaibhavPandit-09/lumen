@@ -21,20 +21,29 @@ Lumen is engineered so that **AI coding agents** can easily inspect the system, 
 lumen/
 ├── assets/             # Vector icon assets (lumen.svg)
 ├── core/               # Matching, scanning, configuration, logging, and execution
+│   ├── actions/        # Custom action scripting engine
+│   │   ├── discovery.py  # Action scanner & mtime cache
+│   │   ├── executor.py   # Safe execution & timeout manager
+│   │   ├── manifest.py   # ActionDefinition & manifest loader
+│   │   └── validator.py  # Contract validation & diagnostics
 │   ├── app_scanner.py  # XDG .desktop parsing, caching, and watching
 │   ├── calculator.py   # AST-based safe math & percentage evaluation
 │   ├── config.py       # JSONC config parser & schema validation
 │   ├── fuzzy.py        # Multi-tier fuzzy & acronym search engine
 │   ├── logging.py      # Privacy-preserving diagnostic logging
 │   ├── models.py       # SearchResult, CommandItem, ItemCategory models
-│   ├── runner.py       # Detached process & terminal command execution
-│   └── schema.json     # Formal configuration schema
+│   ├── runner.py       # Detached process, clipboard, and terminal runner
+│   ├── schema.json     # Formal configuration schema
+│   └── units.py        # Physical, time, and data unit conversion engine
 ├── providers/          # Modular search providers
-│   ├── base.py         # BaseProvider with safe_search error boundary
+│   ├── actions.py      # Custom action search provider
 │   ├── applications.py # Desktop application provider
+│   ├── base.py         # BaseProvider with safe_search error boundary
 │   ├── calculator.py   # Math calculation provider
 │   ├── clipboard.py    # Clipboard integration provider
 │   ├── commands.py     # Custom user/agent commands & submenus
+│   ├── conversions.py  # Physical & data unit conversions
+│   ├── currency.py     # Cached currency conversions
 │   ├── krunner.py      # Optional KDE Plasma KRunner D-Bus adapter
 │   ├── locations.py    # Standard folders provider
 │   ├── recent_files.py # FreeDesktop recent documents (.xbel)
@@ -48,35 +57,45 @@ lumen/
 │   ├── launcher_window.py # Main floating overlay window
 │   ├── result_list.py  # High-performance custom item delegate
 │   ├── search_bar.py   # Keyboard-first search input widget
-│   └── theme.py        # Breeze theme & color scheme engine
-└── tests/              # 47 unit & headless integration tests
+│   ├── theme.py        # Breeze theme & color scheme engine
+│   └── tray.py         # Optional KDE Plasma system tray companion
+└── tests/              # 67 unit & headless integration tests
 ```
 
 ---
 
-## 🧩 Adding a New Search Provider
+## 🛠️ AI Agent Guide: Adding a Custom Action
 
-To add a new provider:
-1. Subclass `BaseProvider` in `lumen/providers/<your_provider>.py`.
-2. Implement `search(self, query: str) -> List[SearchResult]`.
-3. Register the provider in `LauncherWindow._init_providers()` in `lumen/ui/launcher_window.py`.
-4. Add automated unit tests in `tests/test_<your_provider>.py`.
+To add a new command workflow without touching Lumen source code:
 
-```python
-from typing import List
-from lumen.core.models import ItemCategory, SearchResult
-from lumen.providers.base import BaseProvider
-
-class GitRepoProvider(BaseProvider):
-    def __init__(self, enabled: bool = True):
-        super().__init__("git_repos", enabled=enabled)
-
-    def search(self, query: str) -> List[SearchResult]:
-        if not self.enabled or not query:
-            return []
-        # Return SearchResult items with action callback
-        return []
+1. Create a `.jsonc` file in `~/.config/lumen/actions/<id>.jsonc` (e.g. `restart_service.jsonc`):
+```jsonc
+{
+  "id": "restart-service",
+  "name": "Restart Dev Service",
+  "description": "Restarts the backend API service",
+  "category": "Development",
+  "icon": "system-reboot",
+  "keywords": ["service", "api", "restart"],
+  "exec": ["systemctl", "--user", "restart", "my-api.service"],
+  "confirm": false,
+  "timeout_seconds": 10
+}
 ```
+2. Validate using the CLI:
+```bash
+lumen actions validate --json
+```
+3. Test running the action:
+```bash
+lumen actions run restart-service
+```
+4. Reload the running launcher daemon:
+```bash
+lumen actions reload
+```
+
+See [docs/EXTENSION_API.md](file:///home/vaibhavp/workspace/gitdev/lumen/docs/EXTENSION_API.md) for full manifest specification.
 
 ---
 

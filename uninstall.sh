@@ -42,6 +42,6 @@ if command -v update-desktop-database > /dev/null 2>&1; then
 fi
 
 echo ""
-echo "Note: User configuration files in ~/.config/lumen were preserved."
+echo "Note: User configuration and custom actions in ~/.config/lumen were preserved."
 echo "If you wish to remove them as well, run: rm -rf ~/.config/lumen"
 echo "=== Uninstallation Complete ==="

@@ -1,7 +1,7 @@
 # Maintainer: Vaibhav Pandit <vaibhavpandit09@users.noreply.github.com>
 pkgname=lumen-launcher
 _pkgname=lumen
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc="An agent-friendly command launcher for KDE Plasma"
 arch=('any')

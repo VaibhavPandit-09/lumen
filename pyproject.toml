@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lumen-launcher"
-version = "0.1.0"
-description = "Lumen — an agent-friendly command launcher for KDE Plasma"
+version = "0.3.0"
+description = "An agent-friendly command launcher for KDE Plasma"
 readme = "README.md"
 authors = [{ name = "Vaibhav Pandit" }]
 license = { text = "MIT" }

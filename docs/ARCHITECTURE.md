@@ -27,6 +27,7 @@ Lumen is an agent-friendly command launcher and command palette built natively f
      v              v              v
 [ Applications ] [ Commands ] [ System Actions ]
 [ Calculator   ] [ Locations] [ Recent Files   ]
+[ Conversions  ] [ Currency ] [ Custom Actions ]
 [ Clipboard    ] [ Web Search] [ KRunner (opt) ]
      |              |              |
      +--------------+--------------+
@@ -34,12 +35,15 @@ Lumen is an agent-friendly command launcher and command palette built natively f
                     v
             [ Core Engine ]
     - Fuzzy & Acronym Matcher (fuzzy.py)
+    - Custom Actions Engine (core/actions/)
+    - Unit Conversion Engine (units.py)
     - XDG App Scanner & Watcher (app_scanner.py)
     - Safe Process Runner (runner.py)
     - Safe AST Calculator (calculator.py)
     - JSONC Config Engine (config.py & schema.json)
     - Privacy Logging Subsystem (logging.py)
     - Window Animation Manager (animations.py)
+    - System Tray Companion (ui/tray.py)
 ```
 
 ---

@@ -5,6 +5,19 @@ All notable changes to **Lumen** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-30
+
+### Added
+- **Custom Action Scripting Engine**: Extensible custom action runtime supporting declarative `.jsonc` manifests in `~/.config/lumen/actions/` (`ActionDefinition`, `ActionScanner`, `ActionExecutor`, `ActionValidator`).
+- **Confirmation Safety Guard**: Dangerous actions can declare `"confirm": true` with custom confirmation prompts, prompting the user with an interactive confirmation state before execution.
+- **Physical, Time & Data Unit Conversions**: Fast deterministic conversions across length, mass, temperature, speed, area, volume, data size, and time (`ConversionsProvider` & `lumen.core.units`).
+- **Cached Currency Conversions**: Offline-capable currency rate conversions (`CurrencyProvider` & `currency_rates.json`).
+- **Advanced Mathematical Capabilities**: Safe AST math parser expanded with `gcd`, `lcm`, `hypot`, `atan2`, `factorial`, and angle expressions (`sin(45 deg)`).
+- **Optional KDE Plasma System Tray Companion**: `LumenTrayCompanion` leveraging `QSystemTrayIcon` with status, toggle, reload, and quit actions.
+- **Custom Action CLI Suite**: `lumen actions list [--json]`, `lumen actions validate [--json]`, `lumen actions info <id> [--json]`, `lumen actions run <id>`, `lumen actions reload`.
+- **Comprehensive Extension Documentation**: Added dedicated `docs/EXTENSION_API.md` and working starter examples in `examples/custom_actions/`.
+- **Expanded Automated Tests**: Expanded test suite to 67 automated tests with 100% headless pass rate.
+
 ## [0.2.0] - 2026-08-30
 
 ### Added

@@ -44,10 +44,16 @@ if command -v gtk-update-icon-cache > /dev/null 2>&1; then
     gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 fi
 
-# 6. Initialize default config if not present
+# 6. Initialize default config and actions if not present
 if [ ! -f "$CONFIG_DIR/config.jsonc" ] || [ ! -f "$CONFIG_DIR/commands.jsonc" ]; then
     python3 -m lumen config path > /dev/null 2>&1 || true
     echo "✓ Initialized configuration files in $CONFIG_DIR"
+fi
+
+mkdir -p "$CONFIG_DIR/actions"
+if [ -d "$SCRIPT_DIR/examples/custom_actions" ] && [ -z "$(ls -A "$CONFIG_DIR/actions" 2>/dev/null)" ]; then
+    cp "$SCRIPT_DIR/examples/custom_actions/"*.jsonc "$CONFIG_DIR/actions/" 2>/dev/null || true
+    echo "✓ Initialized starter custom action manifests in $CONFIG_DIR/actions"
 fi
 
 # 7. Check if ~/.local/bin is in PATH
