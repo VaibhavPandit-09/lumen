@@ -1,3 +1,15 @@
+lumen (0.4.0-1) unstable; urgency=medium
+
+  * Seamless distribution, lifecycle, health diagnostics, and upgrades.
+  * Single source of truth versioning and version CLI metadata.
+  * Configuration versioning, automatic backup creation, and retention pruning.
+  * System health diagnostic command (lumen doctor [--json]).
+  * Hardened user-local idempotent installer (install.sh --check).
+  * Safe uninstallation with explicit purge mode (uninstall.sh --purge).
+  * Automated GitHub Actions release artifact generation pipeline.
+
+ -- Vaibhav Pandit <vaibhavpandit09@users.noreply.github.com>  Sun, 30 Aug 2026 15:30:00 +0530
+
 lumen (0.3.0-1) unstable; urgency=medium
 
   * Extensibility, custom action scripting engine, and power-user release.
