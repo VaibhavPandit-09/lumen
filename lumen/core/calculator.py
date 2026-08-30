@@ -40,6 +40,8 @@ SAFE_FUNCTIONS: Dict[str, Any] = {
     "asin": math.asin,
     "acos": math.acos,
     "atan": math.atan,
+    "atan2": math.atan2,
+    "hypot": math.hypot,
     "sinh": math.sinh,
     "cosh": math.cosh,
     "tanh": math.tanh,
@@ -51,12 +53,18 @@ SAFE_FUNCTIONS: Dict[str, Any] = {
     "round": round,
     "ceil": math.ceil,
     "floor": math.floor,
-    "factorial": math.factorial,
+    "factorial": lambda a: math.factorial(int(a)),
+    "gcd": lambda a, b: math.gcd(int(a), int(b)),
+    "lcm": lambda a, b: abs(int(a) * int(b)) // math.gcd(int(a), int(b)) if math.gcd(int(a), int(b)) != 0 else 0,
+    "comb": lambda n, k: math.comb(int(n), int(k)) if hasattr(math, "comb") else 0,
+    "perm": lambda n, k=None: (math.perm(int(n), int(k)) if k is not None else math.perm(int(n))) if hasattr(math, "perm") else 0,
     "deg": math.degrees,
     "degrees": math.degrees,
     "rad": math.radians,
     "radians": math.radians,
 }
+# Filter out None entries for Python version compatibility
+SAFE_FUNCTIONS = {k: v for k, v in SAFE_FUNCTIONS.items() if v is not None}
 
 SAFE_CONSTANTS: Dict[str, float] = {
     "pi": math.pi,
@@ -112,11 +120,16 @@ def _eval_node(node: ast.AST) -> float:
 
 
 def preprocess_expression(expr: str) -> str:
-    """Normalizes human expressions (e.g. '15% of 400', '400 + 15%', '^' as power)."""
+    """Normalizes human expressions (e.g. '15% of 400', '400 + 15%', 'sin(45 deg)', '^' as power)."""
     s = expr.strip()
 
     # Normalize power operator '^' to '**'
     s = s.replace("^", "**")
+
+    # Replace 'X deg' / 'X degrees' with 'radians(X)'
+    s = re.sub(r"([\d\.]+)\s*(?:deg|degrees)\b", r"radians(\1)", s, flags=re.IGNORECASE)
+    # Replace 'X rad' / 'X radians' with '\1'
+    s = re.sub(r"([\d\.]+)\s*(?:rad|radians)\b", r"(\1)", s, flags=re.IGNORECASE)
 
     # Replace 'X% of Y' with '(X / 100) * Y'
     s = re.sub(
@@ -158,7 +171,14 @@ def evaluate_expression(query: str) -> Optional[CalculatorResult]:
 
     # Fast rejection if query contains no numbers or math symbols
     has_math_tokens = any(ch in raw_query for ch in "0123456789+-*/%^=()")
-    has_func_tokens = any(fn in raw_query.lower() for fn in ["sqrt", "sin", "cos", "tan", "log", "pi", "tau", "abs"])
+    has_func_tokens = any(
+        fn in raw_query.lower()
+        for fn in [
+            "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "log", "pi",
+            "tau", "abs", "gcd", "lcm", "hypot", "exp", "deg", "rad", "cbrt",
+            "round", "ceil", "floor", "factorial", "comb", "perm",
+        ]
+    )
 
     if not (has_math_tokens or has_func_tokens):
         return None
