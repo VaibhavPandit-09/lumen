@@ -1,0 +1,18 @@
+Source: lumen
+Section: utils
+Priority: optional
+Maintainer: Vaibhav Pandit <vaibhavpandit09@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools
+Standards-Version: 4.6.2
+Homepage: https://github.com/VaibhavPandit-09/lumen
+Vcs-Git: https://github.com/VaibhavPandit-09/lumen.git
+Vcs-Browser: https://github.com/VaibhavPandit-09/lumen
+
+Package: lumen
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3, python3-pyqt6
+Description: agent-friendly command launcher for KDE Plasma
+ Lumen acts as a unified command surface for the desktop, allowing users to
+ interact with applications, custom commands, nested submenus, system actions,
+ common folders, calculator expressions, clipboard, and recent items with
+ instant keyboard-driven feedback.

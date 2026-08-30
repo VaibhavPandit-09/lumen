@@ -1,0 +1,9 @@
+lumen (0.2.0-1) unstable; urgency=medium
+
+  * Production polish release for KDE Plasma 6.
+  * Subtle 120ms window transitions.
+  * Single-instance IPC hardening.
+  * Optional KRunner provider integration.
+  * Multi-monitor cursor centering.
+
+ -- Vaibhav Pandit <vaibhavpandit09@users.noreply.github.com>  Sun, 30 Aug 2026 14:30:00 +0530
