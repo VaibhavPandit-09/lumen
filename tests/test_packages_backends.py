@@ -121,15 +121,17 @@ class TestPackageManager(unittest.TestCase):
         m2 = PackageManager.get_instance()
         self.assertIs(m1, m2)
 
-    @patch.object(AptBackend, "is_available", return_value=True)
-    @patch.object(AptBackend, "search")
-    def test_search_all_ranking(self, mock_search, mock_avail):
-        mock_search.return_value = [
+    def test_search_all_ranking(self):
+        mock_backend = MagicMock()
+        mock_backend.name = "MockAPT"
+        mock_backend.is_available.return_value = True
+        mock_backend.search.return_value = [
             PackageInfo(name="libtree", summary="tree library", installed=False),
             PackageInfo(name="tree", summary="directory viewer", installed=True),
         ]
 
         mgr = PackageManager()
+        mgr.backends = {"mock": mock_backend}
         results = mgr.search_all("tree")
         self.assertEqual(len(results), 2)
         # Exact match and installed should rank first
