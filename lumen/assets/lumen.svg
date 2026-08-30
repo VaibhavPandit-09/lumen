@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="lumenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3DAEE9" />
+      <stop offset="100%" stop-color="#2563EB" />
+    </linearGradient>
+    <linearGradient id="beamGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#93C5FD" stop-opacity="0.2" />
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Shield -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#lumenGrad)" />
+  
+  <!-- Inner Glow Ring -->
+  <circle cx="64" cy="64" r="38" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-opacity="0.25" />
+  
+  <!-- Central Light Beacon / Command Diamond -->
+  <path d="M64 28 L92 64 L64 100 L36 64 Z" fill="#FFFFFF" fill-opacity="0.95" />
+  
+  <!-- Dynamic Flare Lines -->
+  <circle cx="64" cy="64" r="14" fill="url(#lumenGrad)" />
+  <circle cx="64" cy="64" r="7" fill="#FFFFFF" />
+</svg>

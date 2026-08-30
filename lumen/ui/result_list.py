@@ -59,12 +59,15 @@ class ResultItemDelegate(QStyledItemDelegate):
         # 2. Draw Icon (28x28)
         icon_size = 28
         icon_rect = QRect(rect.x() + 10, rect.y() + (rect.height() - icon_size) // 2, icon_size, icon_size)
-        icon = QIcon.fromTheme(item.icon_name)
-        if icon.isNull():
-            # Try file path or fallback
-            icon = QIcon(item.icon_name)
+        
+        if item.is_empty_state:
+            icon = QIcon.fromTheme("system-search")
+        else:
+            icon = QIcon.fromTheme(item.icon_name)
             if icon.isNull():
-                icon = QIcon.fromTheme("application-x-executable")
+                icon = QIcon(item.icon_name)
+                if icon.isNull():
+                    icon = QIcon.fromTheme("application-x-executable")
 
         icon.paint(painter, icon_rect, Qt.AlignmentFlag.AlignCenter)
 
@@ -109,7 +112,7 @@ class ResultItemDelegate(QStyledItemDelegate):
 
         # 3. Draw Title and Subtitle
         text_left = icon_rect.right() + 14
-        text_width = rect.width() - text_left - right_margin
+        text_width = rect.width() - (text_left - rect.x()) - right_margin
 
         # Title
         title_font = QFont()

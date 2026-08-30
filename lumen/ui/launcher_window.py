@@ -21,16 +21,19 @@ from PyQt6.QtWidgets import (
 
 from lumen.core.config import LumenConfig
 from lumen.core.fuzzy import score_item
+from lumen.core.logging import debug, info
 from lumen.core.models import ItemCategory, SearchResult
 from lumen.providers.applications import ApplicationProvider
 from lumen.providers.base import BaseProvider
 from lumen.providers.calculator import CalculatorProvider
 from lumen.providers.clipboard import ClipboardProvider
 from lumen.providers.commands import CommandProvider
+from lumen.providers.krunner import KRunnerProvider
 from lumen.providers.locations import LocationsProvider
 from lumen.providers.recent_files import RecentFilesProvider
 from lumen.providers.system_actions import SystemActionsProvider
 from lumen.providers.web_search import WebSearchProvider
+from lumen.ui.animations import WindowAnimationManager
 from lumen.ui.result_list import ResultItemDelegate, ResultListWidget
 from lumen.ui.search_bar import SearchBar
 from lumen.ui.theme import generate_stylesheet, get_theme
@@ -43,6 +46,10 @@ class LauncherWindow(QWidget):
         super().__init__()
         self.config = config or LumenConfig().load()
         self.theme = get_theme(self.config.theme)
+        self.anim_manager = WindowAnimationManager(
+            self,
+            duration_ms=self.config.animation_duration_ms if self.config.enable_animations else 0,
+        )
 
         # Provider list
         self.providers: List[BaseProvider] = []
@@ -72,7 +79,7 @@ class LauncherWindow(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
-        self.setWindowTitle("Lumen Launcher")
+        self.setWindowTitle("Lumen")
         self.setMinimumWidth(self.config.window_width)
         self.resize(self.config.window_width, 420)
 
@@ -103,6 +110,9 @@ class LauncherWindow(QWidget):
         self.clip_provider = ClipboardProvider(
             enabled=p_cfg.get("clipboard", True),
         )
+        self.krunner_provider = KRunnerProvider(
+            enabled=p_cfg.get("krunner", True),
+        )
         self.web_provider = WebSearchProvider(
             engine_template=self.config.web_search_engine,
             enabled=p_cfg.get("web_search", True),
@@ -114,6 +124,7 @@ class LauncherWindow(QWidget):
             self.app_provider,
             self.sys_provider,
             self.loc_provider,
+            self.krunner_provider,
             self.recent_provider,
             self.clip_provider,
             self.web_provider,
@@ -256,7 +267,7 @@ class LauncherWindow(QWidget):
             self.breadcrumb_label.setVisible(True)
 
     def update_results(self, query: str) -> None:
-        """Computes and populates search results."""
+        """Computes and populates search results with safe provider execution."""
         self.result_list.clear()
         q = query.strip()
 
@@ -289,23 +300,40 @@ class LauncherWindow(QWidget):
                             keywords=item.keywords,
                             shortcut_hint=item.shortcut_hint,
                             context=item.context,
+                            origin_provider=item.origin_provider,
                         )
                         results.append(scored)
                 results.sort(key=lambda x: x.score, reverse=True)
         else:
-            # Search across all enabled providers
+            # Search across all enabled providers using error-safe boundaries
             all_results: List[SearchResult] = []
             for provider in self.providers:
                 if provider.enabled:
-                    try:
-                        res = provider.search(q)
-                        all_results.extend(res)
-                    except Exception as e:
-                        print(f"[Lumen] Search error in {provider.name}: {e}")
+                    res = provider.safe_search(q)
+                    all_results.extend(res)
 
             # Sort descending by match score
             all_results.sort(key=lambda x: x.score, reverse=True)
             results = all_results[: self.config.max_results]
+
+        # If user typed a query and no results were found, display clean empty state
+        if q and not results:
+            from lumen.core.runner import open_path_or_url
+            import urllib.parse
+            encoded = urllib.parse.quote_plus(q)
+            web_url = self.config.web_search_engine.replace("%s", encoded)
+
+            empty_item = SearchResult(
+                id="empty:search",
+                title=f"No matching local results for '{q}'",
+                subtitle="Press Enter to search the web in default browser",
+                category=ItemCategory.WEB.value,
+                icon_name="system-search",
+                action=lambda url=web_url: open_path_or_url(url),
+                badge="Web Search",
+                is_empty_state=True,
+            )
+            results = [empty_item]
 
         # Populate ListWidget
         for item in results:
@@ -319,13 +347,13 @@ class LauncherWindow(QWidget):
 
         # Dynamically adjust window height based on result count
         item_count = self.result_list.count()
-        desired_height = 110 + (item_count * 52)
+        desired_height = 110 + (max(1, item_count) * 52)
         if self.breadcrumb_label.isVisible():
             desired_height += 24
         self.resize(self.config.window_width, max(140, min(desired_height, 650)))
 
     def center_on_active_screen(self) -> None:
-        """Centers launcher horizontally and places in top 20% of active screen."""
+        """Centers launcher horizontally and places in top 20% of active screen with cursor."""
         cursor_pos = QCursor.pos()
         screen = QGuiApplication.screenAt(cursor_pos) or QGuiApplication.primaryScreen()
         if not screen:
@@ -333,7 +361,6 @@ class LauncherWindow(QWidget):
 
         geo = screen.geometry()
         win_w = self.width()
-        win_h = self.height()
 
         x = geo.x() + (geo.width() - win_w) // 2
         y = geo.y() + int(geo.height() * 0.18)
@@ -348,14 +375,14 @@ class LauncherWindow(QWidget):
         self.update_results("")
 
         self.center_on_active_screen()
-        self.show()
+        self.anim_manager.animate_show(on_finished=lambda: self.search_bar.setFocus())
         self.raise_()
         self.activateWindow()
         self.search_bar.setFocus()
 
     def dismiss(self) -> None:
-        """Hides the launcher overlay."""
-        self.hide()
+        """Hides the launcher overlay with subtle transition."""
+        self.anim_manager.animate_hide()
         self.search_bar.clear()
         self.nav_stack.clear()
 

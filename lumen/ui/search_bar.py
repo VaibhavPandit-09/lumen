@@ -20,38 +20,47 @@ class SearchBar(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("LumenSearchBar")
-        self.setPlaceholderText("Search applications, commands, files, or calculate...")
+        self.setPlaceholderText("Type a command, application, calculation, or search...")
         self.setClearButtonEnabled(True)
+        self.setAccessibleName("Lumen Search Query Input")
+        self.setAccessibleDescription("Type search query, math calculation, or command name")
 
     def keyPressEvent(self, event):
         key = event.key()
 
-        # Handle navigation keys
+        # Handle navigation keys (Up, Down, PageUp, PageDown)
         if key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown):
             self.navigate_signal.emit(key)
             event.accept()
             return
 
-        # Handle activation
+        # Handle activation (Enter, Return)
         if key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
             self.activate_signal.emit()
             event.accept()
             return
 
-        # Handle dismiss
+        # Handle dismiss (Escape)
         if key == Qt.Key.Key_Escape:
             self.dismiss_signal.emit()
             event.accept()
             return
 
-        # Handle drill down into submenu
-        if key == Qt.Key.Key_Tab or (key == Qt.Key.Key_Right and self.cursorPosition() == len(self.text())):
+        # Handle drill down into submenu (Tab, Right Arrow at end of text)
+        if key == Qt.Key.Key_Tab and not (event.modifiers() & Qt.KeyboardModifier.ShiftModifier):
             self.drill_down_signal.emit()
             event.accept()
             return
 
-        # Handle backspace on empty text to go up one menu level
-        if key == Qt.Key.Key_Backspace and not self.text():
+        if key == Qt.Key.Key_Right and self.cursorPosition() == len(self.text()):
+            self.drill_down_signal.emit()
+            event.accept()
+            return
+
+        # Handle Shift+Tab or Left Arrow at start of text / Backspace on empty to go back
+        if (key == Qt.Key.Key_Tab and (event.modifiers() & Qt.KeyboardModifier.ShiftModifier)) or \
+           (key == Qt.Key.Key_Left and self.cursorPosition() == 0 and not self.text()) or \
+           (key == Qt.Key.Key_Backspace and not self.text()):
             self.pop_level_signal.emit()
             event.accept()
             return
