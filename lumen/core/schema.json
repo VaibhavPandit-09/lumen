@@ -15,7 +15,7 @@
     },
     "shortcut": {
       "type": "string",
-      "default": "Meta+Space",
+      "default": "Alt+Space",
       "description": "Global keyboard shortcut to open/toggle Lumen launcher"
     },
     "theme": {
@@ -72,12 +72,29 @@
       "default": false,
       "description": "Enable optional KDE Plasma system tray companion icon"
     },
+    "update_check_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable background checking for Lumen and software updates"
+    },
+    "update_check_interval_hours": {
+      "type": "integer",
+      "default": 24,
+      "minimum": 1,
+      "description": "Interval in hours between automatic update checks"
+    },
+    "update_dismissed_version": {
+      "type": "string",
+      "default": "",
+      "description": "Version string of dismissed update notification"
+    },
     "providers": {
       "type": "object",
       "description": "Enable or disable individual search providers",
       "properties": {
         "applications": { "type": "boolean", "default": true },
         "packages": { "type": "boolean", "default": true },
+        "updates": { "type": "boolean", "default": true },
         "commands": { "type": "boolean", "default": true },
         "actions": { "type": "boolean", "default": true },
         "system_actions": { "type": "boolean", "default": true },

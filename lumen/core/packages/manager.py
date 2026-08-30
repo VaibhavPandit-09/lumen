@@ -68,6 +68,40 @@ class PackageManager:
         all_pkgs.sort(key=_rank_key)
         return all_pkgs[:limit]
 
+    def search_all_async(
+        self,
+        query: str,
+        callback: Callable[[List[PackageInfo]], None],
+        limit: int = 15,
+    ) -> threading.Thread:
+        """Runs search_all in a background thread and invokes callback with results."""
+        def _worker():
+            results = self.search_all(query, limit=limit)
+            try:
+                callback(results)
+            except Exception as e:
+                error("PackageManager", f"Async search callback error: {e}")
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        return t
+
+    def check_all_updates_async(
+        self,
+        callback: Callable[[Dict[str, List[PackageInfo]]], None],
+    ) -> threading.Thread:
+        """Runs check_all_updates in a background thread and invokes callback with results."""
+        def _worker():
+            updates = self.check_all_updates()
+            try:
+                callback(updates)
+            except Exception as e:
+                error("PackageManager", f"Async update check callback error: {e}")
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+        return t
+
     def check_all_updates(self) -> Dict[str, List[PackageInfo]]:
         """Queries all active backends for pending updates."""
         updates: Dict[str, List[PackageInfo]] = {}

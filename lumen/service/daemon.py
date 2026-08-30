@@ -15,7 +15,7 @@ from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import QApplication
 
 from lumen.core.config import LumenConfig
-from lumen.core.logging import debug, error, info
+from lumen.core.logging import debug, error, info, warning
 from lumen.ui.launcher_window import LauncherWindow
 
 

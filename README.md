@@ -5,7 +5,7 @@
 [![KDE Plasma 6](https://img.shields.io/badge/KDE%20Plasma-6-blue.svg)](https://kde.org/plasma-desktop/)
 [![Qt 6](https://img.shields.io/badge/Qt-6.10-green.svg)](https://www.qt.io/)
 [![Python 3](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://www.python.org/)
-[![Tests Passing](https://img.shields.io/badge/tests-112%20passed-brightgreen.svg)](https://github.com/VaibhavPandit-09/lumen/actions)
+[![Tests Passing](https://img.shields.io/badge/tests-163%20passed-brightgreen.svg)](https://github.com/VaibhavPandit-09/lumen/actions)
 
 **Lumen** is a fast, malleable command launcher, command palette, and universal software management surface designed natively for **KDE Plasma**.
 
@@ -21,7 +21,8 @@ However, Lumen is an **independent, standalone KDE application** built with the 
 * **Conventional Floating Desktop**: Maintains KDE Plasma's standard floating-window workflow. It does **not** enforce or reproduce tiling-window-manager mechanics.
 * **No External Distro/Shell Dependencies**: Does **not** require Arch Linux, Omarchy, Hyprland, Quickshell, or any Omarchy-specific packages or configurations.
 * **Desktop-Grade Command Surface**: Operates as a true desktop overlay—appearing on `Alt+Space`, instantly accepting focus, executing via `Enter` or mouse click, and immediately dismissing without cluttering the taskbar.
-* **Universal Software Management**: Seamlessly searches, installs, updates, and removes packages across **APT**, **Flatpak**, **Snap**, and **Pacman** without needing to remember individual CLI syntax.
+* **Hierarchical Command Navigation**: Clean structured surfaces for **Apps**, **Packages**, **Updates**, **Commands**, **Files**, and **System** with progressive disclosure and instant search.
+* **Universal Software Management & One-Click Self Updates**: Seamlessly searches, installs, updates, and removes packages across **APT**, **Flatpak**, **Snap**, and **Pacman**, plus one-click self-updating directly from GitHub Releases.
 * **Agent-First Malleability**: Designed from the ground up so that **AI coding agents** (and power users) can inspect the codebase, understand human-readable JSONC configurations, and seamlessly extend launcher commands, menus, and automation without touching opaque binary databases.
 * **Native KDE & Qt 6 Integration**: Built directly with Qt 6 and KDE Plasma D-Bus APIs, respecting system themes, high-DPI scaling, and Wayland/X11 sessions.
 
@@ -32,6 +33,8 @@ However, Lumen is an **independent, standalone KDE application** built with the 
 ## ✨ Features
 
 * 🚀 **Instant Application Launching**: Discovers `.desktop` applications from system, user, Flatpak, and Snap directories with live filesystem watching (`QFileSystemWatcher`) and intelligent deduplication.
+* 🧭 **Hierarchical Navigation Surfaces**: Dedicated surfaces for **Apps**, **Packages**, **Updates**, **Commands**, **Files**, and **System** with predictive breadcrumb navigation and universal Escape back-stacking.
+* 🔄 **One-Click Self-Updates**: Built-in GitHub Releases integration with automated discovery, SHA-256 checksum verification, atomic directory replacement, and automatic rollback on verification failure (`lumen update --self`).
 * 📦 **Universal Software Management**: Unified software discovery and package operations for **APT**, **Flatpak**, **Snap**, and **Pacman** with PolicyKit (`pkexec`) elevation.
 * ⚡ **Natural Command Intents**: Type `install vscode`, `uninstall docker`, `update htop`, or `update all` directly in the search bar.
 * 🛠️ **Custom Action Scripting Engine**: Create powerful standalone actions and workflows in `~/.config/lumen/actions/` using declarative `.jsonc` manifests with safe execution, argument substitution, and timeouts.
@@ -49,7 +52,7 @@ However, Lumen is an **independent, standalone KDE application** built with the 
 * 🗔 **Optional System Tray Companion**: Clean companion tray icon for toggling, reloading, and status.
 * ✨ **Subtle 120ms Transitions**: Non-blocking fluid entry and dismissal animations.
 * 🎨 **Breeze & Adaptive Theme**: Seamlessly adapts to KDE dark and light color schemes with custom SVG icon assets.
-* 🤖 **AI-Agent Ready**: Comprehensive CLI inspection (`lumen doctor --json`, `lumen packages search <query> --json`, `lumen version --json`) and clean JSON schema validation.
+* 🤖 **AI-Agent Ready**: Comprehensive CLI inspection (`lumen doctor --json`, `lumen packages search <query> --json`, `lumen version --json`, `lumen update --check --json`) and clean JSON schema validation.
 
 ---
 
@@ -106,7 +109,7 @@ uninstall htop   → Safely remove htop (prompts for confirmation)
 update all       → Check and apply updates across APT, Flatpak, Snap, and Pacman
 ```
 
-CLI Software Management:
+CLI Software Management & Self-Updates:
 ```bash
 # Search packages across all active backends
 lumen packages search neovim
@@ -114,8 +117,14 @@ lumen packages search neovim
 # View available software updates
 lumen packages updates
 
-# Update all packages
+# Update all system packages
 lumen update
+
+# Check for Lumen self-updates
+lumen update --check
+
+# One-click self-update Lumen to latest GitHub release
+lumen update --self
 ```
 
 ---
@@ -123,7 +132,7 @@ lumen update
 ## 🛠️ Configuration & Custom Commands
 
 Lumen stores its configuration in human-readable JSONC (JSON with comments) under `~/.config/lumen/`:
-* `~/.config/lumen/config.jsonc` — General preferences (shortcut, theme, window size, opacity, providers).
+* `~/.config/lumen/config.jsonc` — General preferences (shortcut, theme, window size, opacity, providers, update check).
 * `~/.config/lumen/commands.jsonc` — Custom commands and nested menus.
 * `~/.config/lumen/actions/` — Standalone declarative custom action manifests (`.jsonc`).
 
@@ -131,7 +140,7 @@ Lumen stores its configuration in human-readable JSONC (JSON with comments) unde
 
 ## 🧪 Testing
 
-Lumen has a 100% automated test suite with **112+ tests** covering unit logic, error isolation, custom actions, conversions, package backends, and headless Qt UI interactions:
+Lumen has a 100% automated test suite with **163+ tests** covering unit logic, error isolation, custom actions, conversions, package backends, navigation hierarchy, GitHub update checking, staged self-updates with rollback, and headless Qt UI interactions:
 
 ```bash
 QT_QPA_PLATFORM=offscreen python3 -m unittest discover -s tests -p "test_*.py" -v

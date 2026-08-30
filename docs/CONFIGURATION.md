@@ -30,6 +30,9 @@ Configurations are located in:
 | `animation_duration_ms` | `integer` | `120` | Transition duration in milliseconds (0 - 500) |
 | `actions_dir` | `string` | `"~/.config/lumen/actions"` | Directory storing custom action manifests |
 | `enable_tray` | `boolean` | `false` | Enable optional KDE system tray companion |
+| `update_check_enabled` | `boolean` | `true` | Enable background update checking |
+| `update_check_interval_hours` | `integer` | `24` | Hours between automatic update checks |
+| `update_dismissed_version` | `string` | `""` | Version string of dismissed update notification |
 | `providers` | `object` | `{...}` | Toggle individual search providers on or off |
 | `hidden_applications` | `array` | `[]` | List of `.desktop` IDs or names to suppress |
 | `web_search_engine` | `string` | `"https://duckduckgo.com/?q=%s"` | Fallback web search template URL |
@@ -40,6 +43,7 @@ Configurations are located in:
 "providers": {
   "applications": true,
   "packages": true,
+  "updates": true,
   "commands": true,
   "actions": true,
   "system_actions": true,

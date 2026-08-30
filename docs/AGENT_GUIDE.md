@@ -34,7 +34,12 @@ lumen/
 │   │   ├── intent.py     # Natural command intent parser
 │   │   ├── manager.py    # Multi-backend aggregator & concurrency lock
 │   │   ├── pacman.py     # Pacman & ALPM backend
-│   │   └── snap.py       # Snap backend
+│   │   ├── snap.py       # Snap backend
+│   │   └── software.py   # SoftwareItem & SoftwareCapabilities entity models
+│   ├── updater/        # GitHub release self-update subsystem
+│   │   ├── checker.py    # UpdateChecker with caching and backoff
+│   │   ├── installer.py  # SelfUpdater with checksum verification & rollback
+│   │   └── version.py    # Semantic version comparison utility
 │   ├── app_scanner.py  # XDG .desktop parsing, caching, and watching
 │   ├── calculator.py   # AST-based safe math & percentage evaluation
 │   ├── config.py       # JSONC config parser, schema validation, and migrations
@@ -44,6 +49,7 @@ lumen/
 │   ├── models.py       # SearchResult, CommandItem, ItemCategory models
 │   ├── runner.py       # Detached process, clipboard, and terminal runner
 │   ├── schema.json     # Formal configuration schema
+│   ├── task.py         # Unified async operation task state model
 │   └── units.py        # Physical, time, and data unit conversion engine
 ├── providers/          # Modular search providers
 │   ├── actions.py      # Custom action search provider
@@ -59,6 +65,7 @@ lumen/
 │   ├── packages.py     # Software search & natural intent provider
 │   ├── recent_files.py # FreeDesktop recent documents (.xbel)
 │   ├── system_actions.py # KDE session & settings actions
+│   ├── updates.py      # Lumen & system software updates provider
 │   └── web_search.py   # Fallback browser search provider
 ├── service/            # Lifecycle & IPC daemon
 │   ├── daemon.py       # Single-instance Unix socket server
@@ -66,11 +73,12 @@ lumen/
 ├── ui/                 # PyQt6 command palette interface
 │   ├── animations.py   # Subtle 120ms window transitions
 │   ├── launcher_window.py # Main floating overlay window
+│   ├── navigation.py   # Hierarchical navigation manager & root surfaces
 │   ├── result_list.py  # High-performance custom item delegate (NoFocus)
 │   ├── search_bar.py   # Keyboard-first search input widget
 │   ├── theme.py        # Breeze theme & color scheme engine
 │   └── tray.py         # Optional KDE Plasma system tray companion
-└── tests/              # 112+ unit & headless integration tests
+└── tests/              # 163+ unit & headless integration tests across 37 suites
 ```
 
 ---

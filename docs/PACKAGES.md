@@ -81,4 +81,36 @@ lumen packages updates --json
 # Update all software
 lumen update
 lumen update --json
+
+# Check for Lumen self-updates
+lumen update --check
+lumen update --check --json
+
+# One-click self-update Lumen to latest GitHub release
+lumen update --self
+```
+
+---
+
+## 🧩 Software Entity Model (`SoftwareItem`)
+
+Lumen represents software through a unified data model across all package backends:
+
+```python
+@dataclass
+class SoftwareItem:
+    id: str
+    name: str
+    display_name: str
+    description: str
+    icon: str
+    kind: SoftwareKind  # APPLICATION, PACKAGE, RUNTIME, LIBRARY, CLI
+    source: str         # "apt", "flatpak", "snap", "pacman"
+    installed: bool
+    version: str
+    available_version: str
+    update_available: bool
+    launchable: bool
+    desktop_entry: Optional[str]
+    capabilities: SoftwareCapabilities
 ```

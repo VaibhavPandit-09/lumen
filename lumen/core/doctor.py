@@ -117,6 +117,10 @@ class SystemDoctor:
         report.checks.append(cls.check_ipc_daemon())
         report.checks.append(cls.check_krunner_interface())
         report.checks.append(cls.check_system_tray())
+        report.checks.append(cls.check_install_method())
+        report.checks.append(cls.check_self_update_capability())
+        report.checks.append(cls.check_github_connectivity())
+        report.checks.append(cls.check_update_state())
 
         return report
 
@@ -445,3 +449,86 @@ class SystemDoctor:
                 status=CheckStatus.INFO,
                 message="System tray companion available when graphical desktop session is active",
             )
+
+    @staticmethod
+    def check_install_method() -> DiagnosticCheck:
+        from lumen.core.updater.installer import SelfUpdater
+        method = SelfUpdater.detect_install_method()
+        return DiagnosticCheck(
+            name="Installation Method",
+            status=CheckStatus.PASS if method.value != "unknown" else CheckStatus.INFO,
+            message=f"Detected installation method: {method.value}",
+        )
+
+    @staticmethod
+    def check_self_update_capability() -> DiagnosticCheck:
+        from lumen.core.updater.installer import SelfUpdater
+        method = SelfUpdater.detect_install_method()
+        can_update = SelfUpdater.can_self_update(method)
+        if can_update:
+            return DiagnosticCheck(
+                name="Self-Update Capability",
+                status=CheckStatus.PASS,
+                message="One-click atomic self-update is supported for this installation",
+            )
+        return DiagnosticCheck(
+            name="Self-Update Capability",
+            status=CheckStatus.INFO,
+            message=f"Self-update handled via package manager ({method.value})",
+        )
+
+    @staticmethod
+    def check_github_connectivity() -> DiagnosticCheck:
+        import time
+        import urllib.request
+        try:
+            req = urllib.request.Request(
+                "https://api.github.com",
+                headers={"User-Agent": f"Lumen/{__version__}"},
+            )
+            t0 = time.time()
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                latency_ms = int((time.time() - t0) * 1000)
+                if resp.status == 200:
+                    return DiagnosticCheck(
+                        name="GitHub Releases API",
+                        status=CheckStatus.PASS,
+                        message=f"Connected to GitHub API ({latency_ms}ms)",
+                    )
+        except Exception as e:
+            return DiagnosticCheck(
+                name="GitHub Releases API",
+                status=CheckStatus.WARN,
+                message="Could not reach GitHub Releases API (offline or rate limited)",
+                details=str(e),
+                fix_suggestion="Check your internet connection if you wish to receive update notifications.",
+            )
+        return DiagnosticCheck(
+            name="GitHub Releases API",
+            status=CheckStatus.WARN,
+            message="GitHub API connection did not return 200",
+        )
+
+    @staticmethod
+    def check_update_state() -> DiagnosticCheck:
+        from lumen.core.updater.checker import UpdateChecker
+        checker = UpdateChecker()
+        cached = checker.get_cached_update_info()
+        if cached:
+            if cached.update_available:
+                return DiagnosticCheck(
+                    name="Lumen Version Status",
+                    status=CheckStatus.WARN,
+                    message=f"Update available: v{cached.latest_version} (current: v{__version__})",
+                    fix_suggestion="Run 'lumen update --self' or select Update in launcher.",
+                )
+            return DiagnosticCheck(
+                name="Lumen Version Status",
+                status=CheckStatus.PASS,
+                message=f"Lumen is up to date (v{__version__})",
+            )
+        return DiagnosticCheck(
+            name="Lumen Version Status",
+            status=CheckStatus.INFO,
+            message=f"Current version v{__version__} (no cached update check available)",
+        )

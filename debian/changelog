@@ -1,3 +1,14 @@
+lumen (0.6.0-1) unstable; urgency=medium
+
+  * Native launcher UX, guided software management, and one-click self-updates.
+  * Hierarchical category navigation with dedicated Apps, Packages, and Updates surfaces.
+  * Universal Escape hierarchy and strict overlay lifecycle management.
+  * Complete self-update subsystem with GitHub release discovery, checksum verification, and atomic rollback.
+  * Unified async operation task model and cross-thread Qt safety.
+  * Expanded system health diagnostics and 160+ automated test suite.
+
+ -- Vaibhav Pandit <vaibhavpandit09@users.noreply.github.com>  Sun, 30 Aug 2026 16:30:00 +0530
+
 lumen (0.5.0-1) unstable; urgency=medium
 
   * Desktop-grade launcher UX, zero-friction setup, and universal software management.

@@ -37,8 +37,10 @@ from lumen.providers.locations import LocationsProvider
 from lumen.providers.packages import PackagesProvider
 from lumen.providers.recent_files import RecentFilesProvider
 from lumen.providers.system_actions import SystemActionsProvider
+from lumen.providers.updates import UpdatesProvider
 from lumen.providers.web_search import WebSearchProvider
 from lumen.ui.animations import WindowAnimationManager
+from lumen.ui.navigation import NavigationLevel, NavigationManager
 from lumen.ui.result_list import ResultItemDelegate, ResultListWidget
 from lumen.ui.search_bar import SearchBar
 from lumen.ui.theme import generate_stylesheet, get_theme
@@ -47,6 +49,10 @@ from lumen.ui.tray import LumenTrayCompanion
 
 class LauncherWindow(QWidget):
     """Modern, centered floating command palette overlay window."""
+
+    # Cross-thread safety signals for async action dispatch
+    _progress_signal = pyqtSignal(str)
+    _complete_signal = pyqtSignal(object)
 
     def __init__(self, config: Optional[LumenConfig] = None):
         super().__init__()
@@ -69,8 +75,9 @@ class LauncherWindow(QWidget):
         # Confirmation state tracking
         self._pending_confirmation: Optional[SearchResult] = None
 
-        # Navigation stack for submenus
+        # Navigation stack for submenus and hierarchical navigation
         self.nav_stack: List[tuple[str, List[SearchResult]]] = []
+        self.nav_manager = NavigationManager()
 
         # Setup UI
         self._init_window_flags()
@@ -106,6 +113,9 @@ class LauncherWindow(QWidget):
         )
         self.pkg_provider = PackagesProvider(
             enabled=p_cfg.get("packages", True),
+        )
+        self.updates_provider = UpdatesProvider(
+            enabled=p_cfg.get("updates", True),
         )
         self.cmd_provider = CommandProvider(
             commands=self.config.commands,
@@ -152,6 +162,7 @@ class LauncherWindow(QWidget):
             self.cmd_provider,
             self.app_provider,
             self.pkg_provider,
+            self.updates_provider,
             self.sys_provider,
             self.loc_provider,
             self.krunner_provider,
@@ -228,12 +239,17 @@ class LauncherWindow(QWidget):
         self.search_bar.textChanged.connect(self._on_search_query_changed)
         self.search_bar.navigate_signal.connect(self._on_navigate_list)
         self.search_bar.activate_signal.connect(lambda: self._on_item_activated())
-        self.search_bar.dismiss_signal.connect(self.dismiss)
+        self.search_bar.dismiss_signal.connect(self._on_escape_pressed)
         self.search_bar.drill_down_signal.connect(self._on_drill_down)
         self.search_bar.pop_level_signal.connect(self._on_pop_level)
 
         self.result_list.itemActivated.connect(lambda item: self._on_item_activated(item.data(Qt.ItemDataRole.UserRole)))
         self.result_list.itemClicked.connect(lambda item: self._on_item_activated(item.data(Qt.ItemDataRole.UserRole)))
+
+        # Cross-thread safety: async dispatch callbacks emit signals
+        # which are delivered on the Qt main thread
+        self._progress_signal.connect(self._on_action_progress)
+        self._complete_signal.connect(self._on_action_complete)
 
     def _on_search_query_changed(self, query: str) -> None:
         """Called whenever search bar text changes."""
@@ -254,6 +270,11 @@ class LauncherWindow(QWidget):
         if not item:
             return
 
+        # If item is a navigation root category (e.g. Apps, Packages, Updates, Commands, Files, System)
+        if item.id.startswith("nav:"):
+            self._navigate_to_category(item)
+            return
+
         # If item requires subcommands / drill down
         if item.has_subcommands():
             self.push_submenu(item.title, item.subcommands)
@@ -262,10 +283,11 @@ class LauncherWindow(QWidget):
         confirmed = (self._pending_confirmation == item)
 
         # Dispatch action through canonical ActionDispatcher
+        # Use signal .emit methods for thread-safe cross-thread callbacks
         res = ActionDispatcher.dispatch(
             item=item,
-            on_progress=self._on_action_progress,
-            on_complete=self._on_action_complete,
+            on_progress=self._progress_signal.emit,
+            on_complete=self._complete_signal.emit,
             confirmed=confirmed,
         )
 
@@ -281,6 +303,45 @@ class LauncherWindow(QWidget):
 
         if res.dismiss_window:
             self.dismiss()
+
+    def _navigate_to_category(self, item: SearchResult) -> None:
+        """Navigates to a specific category surface with filtered provider context."""
+        cat_map = {
+            "nav:apps": ("Apps", "applications", "Search applications..."),
+            "nav:packages": ("Packages", "packages", "Search, install, or remove software..."),
+            "nav:updates": ("Updates", "updates", "Search or run updates..."),
+            "nav:commands": ("Commands", "commands", "Search custom commands..."),
+            "nav:files": ("Files", "files", "Search files and locations..."),
+            "nav:system": ("System", "system_actions", "System actions..."),
+        }
+
+        title, p_filter, placeholder = cat_map.get(
+            item.id, (item.title, None, f"Search {item.title.lower()}...")
+        )
+
+        level = NavigationLevel(
+            title=title,
+            provider_filter=p_filter,
+            placeholder_text=placeholder,
+            icon_name=item.icon_name,
+        )
+        self.nav_manager.push(level)
+        self.search_bar.clear()
+        self.search_bar.setPlaceholderText(placeholder)
+        self._update_breadcrumb()
+        self.update_results("")
+
+    def _pop_navigation_level(self) -> None:
+        """Pops one level up the hierarchical navigation stack."""
+        self.nav_manager.pop()
+        curr = self.nav_manager.current_level()
+        if curr:
+            self.search_bar.setPlaceholderText(curr.placeholder_text)
+        else:
+            self.search_bar.setPlaceholderText("Type to search, calculate, or execute commands...")
+        self.search_bar.clear()
+        self._update_breadcrumb()
+        self.update_results("")
 
     def _on_action_progress(self, progress_text: str) -> None:
         """Shows non-blocking progress in the breadcrumb bar."""
@@ -305,13 +366,17 @@ class LauncherWindow(QWidget):
     def _on_drill_down(self) -> None:
         """Enters submenu if current item has subcommands."""
         selected = self.result_list.get_selected_result()
-        if selected and selected.has_subcommands():
+        if selected and selected.id.startswith("nav:"):
+            self._navigate_to_category(selected)
+        elif selected and selected.has_subcommands():
             self.push_submenu(selected.title, selected.subcommands)
 
     def _on_pop_level(self) -> None:
-        """Pops one level up the navigation stack."""
+        """Pops one level up the navigation or submenu stack."""
         if self.nav_stack:
             self.pop_submenu()
+        elif not self.nav_manager.is_at_root():
+            self._pop_navigation_level()
 
     def push_submenu(self, title: str, items: List[SearchResult]) -> None:
         """Pushes a new submenu level onto navigation stack."""
@@ -330,20 +395,28 @@ class LauncherWindow(QWidget):
 
     def _update_breadcrumb(self) -> None:
         """Updates top breadcrumb header label."""
-        if not self.nav_stack:
-            self.breadcrumb_label.setVisible(False)
-        else:
+        if self._pending_confirmation:
+            return
+
+        if self.nav_stack:
             path_str = " > ".join([title for title, _ in self.nav_stack])
             self.breadcrumb_label.setText(f"Lumen  ›  {path_str}")
             self.breadcrumb_label.setStyleSheet(f"color: {self.theme.accent_color}; font-size: 11px; font-weight: bold;")
             self.breadcrumb_label.setVisible(True)
+        elif not self.nav_manager.is_at_root():
+            path_str = self.nav_manager.breadcrumb_path()
+            self.breadcrumb_label.setText(path_str)
+            self.breadcrumb_label.setStyleSheet(f"color: {self.theme.accent_color}; font-size: 11px; font-weight: bold;")
+            self.breadcrumb_label.setVisible(True)
+        else:
+            self.breadcrumb_label.setVisible(False)
 
     def update_results(self, query: str) -> None:
         """Computes and populates search results with safe provider execution."""
         self.result_list.clear()
         q = query.strip()
 
-        # If inside a submenu, search only within current submenu items
+        # 1. If inside a submenu, search only within current submenu items
         if self.nav_stack:
             current_items = self.nav_stack[-1][1]
             if not q:
@@ -361,17 +434,45 @@ class LauncherWindow(QWidget):
                     if matched:
                         results.append(item)
                 results.sort(key=lambda x: x.score, reverse=True)
+
+        # 2. If inside a category surface (NavigationLevel), query filtered providers
+        elif not self.nav_manager.is_at_root():
+            curr_level = self.nav_manager.current_level()
+            p_filter = curr_level.provider_filter if curr_level else None
+            results = []
+
+            if p_filter == "applications":
+                results = self.app_provider.safe_search(q)
+            elif p_filter == "packages":
+                results = self.pkg_provider.safe_search(q)
+            elif p_filter == "updates":
+                results = self.updates_provider.safe_search(q)
+            elif p_filter == "commands":
+                results = self.cmd_provider.safe_search(q)
+            elif p_filter == "files":
+                results = self.loc_provider.safe_search(q) + self.recent_provider.safe_search(q)
+            elif p_filter == "system_actions":
+                results = self.sys_provider.safe_search(q)
+
+            results.sort(key=lambda x: x.score, reverse=True)
+
+        # 3. If at Root level
         else:
-            all_results: List[SearchResult] = []
-            for provider in self.providers:
-                if provider.enabled:
-                    res = provider.safe_search(q)
-                    all_results.extend(res)
+            if not q:
+                # Show root navigation categories
+                results = self.nav_manager.get_root_categories()
+            else:
+                # Unified multi-provider search
+                all_results: List[SearchResult] = []
+                for provider in self.providers:
+                    if provider.enabled:
+                        res = provider.safe_search(q)
+                        all_results.extend(res)
 
-            all_results.sort(key=lambda x: x.score, reverse=True)
-            results = all_results[: self.config.max_results]
+                all_results.sort(key=lambda x: x.score, reverse=True)
+                results = all_results[: self.config.max_results]
 
-        # Empty state fallback
+        # Empty state fallback (when user typed a query and nothing matched)
         if q and not results:
             from lumen.core.runner import open_path_or_url
             import urllib.parse
@@ -423,11 +524,14 @@ class LauncherWindow(QWidget):
     def show_launcher(self) -> None:
         """Presents the launcher window, focuses search input, and resets state."""
         self.nav_stack.clear()
+        self.nav_manager.reset()
         self._pending_confirmation = None
         self._update_breadcrumb()
         self.search_bar.clear()
+        self.search_bar.setPlaceholderText("Type to search, calculate, or execute commands...")
         self.update_results("")
 
+        self.result_list.activate_hover_guard()
         self.center_on_active_screen()
         self.anim_manager.animate_show(on_finished=lambda: self.search_bar.setFocus())
         self.raise_()
@@ -435,11 +539,14 @@ class LauncherWindow(QWidget):
         self.search_bar.setFocus()
 
     def dismiss(self) -> None:
-        """Hides the launcher overlay with subtle transition."""
+        """Hides the launcher overlay with subtle transition and full state reset."""
         self.anim_manager.animate_hide()
         self._pending_confirmation = None
         self.search_bar.clear()
+        self.search_bar.setPlaceholderText("Type to search, calculate, or execute commands...")
         self.nav_stack.clear()
+        self.nav_manager.reset()
+        self._update_breadcrumb()
 
     def toggle(self) -> None:
         """Toggles visibility of launcher."""
@@ -459,16 +566,36 @@ class LauncherWindow(QWidget):
         if not self.isActiveWindow() and self.isVisible():
             self.dismiss()
 
+    def closeEvent(self, event) -> None:
+        """Prevent WM from destroying the launcher window; hide instead."""
+        event.ignore()
+        self.dismiss()
+
+    def _on_escape_pressed(self) -> None:
+        """
+        Implements the proper escape key hierarchy:
+        1. Cancel pending confirmation prompt
+        2. Pop submenu navigation level
+        3. Pop hierarchical category navigation level
+        4. Clear search text (if non-empty)
+        5. Dismiss the launcher
+        """
+        if self._pending_confirmation:
+            self._pending_confirmation = None
+            self._update_breadcrumb()
+            self.update_results(self.search_bar.text())
+        elif self.nav_stack:
+            self.pop_submenu()
+        elif not self.nav_manager.is_at_root():
+            self._pop_navigation_level()
+        elif self.search_bar.text():
+            self.search_bar.clear()
+        else:
+            self.dismiss()
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Escape:
-            if self._pending_confirmation:
-                self._pending_confirmation = None
-                self._update_breadcrumb()
-                self.update_results(self.search_bar.text())
-            elif self.nav_stack:
-                self.pop_submenu()
-            else:
-                self.dismiss()
+            self._on_escape_pressed()
             event.accept()
             return
         super().keyPressEvent(event)

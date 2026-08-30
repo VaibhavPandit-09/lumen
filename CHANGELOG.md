@@ -5,6 +5,19 @@ All notable changes to **Lumen** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-08-30
+
+### Added
+- **Hierarchical Category Navigation (`NavigationManager`)**: Structured surfaces for **Apps**, **Packages**, **Updates**, **Commands**, **Files**, and **System** with progressive disclosure, dynamic placeholder text, and predictive breadcrumb paths.
+- **Universal Escape Hierarchy**: Resolved Escape preemption bug; Escape key now strictly unwinds one layer at a time: cancels pending confirmation -> pops submenus -> pops category surfaces -> clears search text -> dismisses overlay.
+- **Software Entity Model (`SoftwareItem`)**: Rich software metadata model with `SoftwareKind` (Application, Package, Runtime, Library, CLI), capabilities mapping, and source tracking across backends.
+- **One-Click GitHub Release Self-Updating (`SelfUpdater`, `UpdateChecker`)**: Background update checker with caching, backoff, and offline tolerance; automated release discovery via GitHub API; SHA-256 checksum verification; staged tarball extraction; atomic directory replacement; and automatic rollback upon verification failure (`lumen update --self` / `lumen update --check`).
+- **Dedicated Updates Surface & Provider (`UpdatesProvider`)**: Unified update dashboard displaying pending Lumen releases and system package updates per backend with one-click "Update All".
+- **Cross-Thread UI Safety**: Signal-based callback marshalling via `_progress_signal` and `_complete_signal` ensuring all UI widget mutations strictly execute on the Qt main GUI thread.
+- **Package Manager Hardening**: Non-blocking async search and update query APIs (`search_all_async`, `check_all_updates_async`), input regex validation for Flatpak and Snap backends, and false-success detection on failed transaction outcomes.
+- **Expanded System Health Diagnostics (`lumen doctor`)**: Added validation checks for installation method detection, self-update capability, GitHub API connectivity with latency measurement, and Lumen update cache status.
+- **Comprehensive Automated Test Suite**: Expanded test suite to **163 automated tests** (100% pass rate) across 37 test modules.
+
 ## [0.5.0] - 2026-08-30
 
 ### Added

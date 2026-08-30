@@ -76,6 +76,25 @@ class BasePackageBackend(ABC):
         """Short identifier (e.g. 'apt', 'flatpak', 'snap', 'pacman')."""
         pass
 
+    @property
+    def capabilities(self) -> Dict[str, bool]:
+        """Feature support flags for this package backend."""
+        return {
+            "supports_search": True,
+            "supports_installed": True,
+            "supports_updates": True,
+            "supports_install": True,
+            "supports_remove": True,
+            "supports_purge": False,
+            "supports_update": True,
+            "supports_details": False,
+        }
+
+    def is_valid_package_name(self, package_name: str) -> bool:
+        """Validates package name against unsafe characters."""
+        import re
+        return bool(re.match(r"^[a-zA-Z0-9_\-\.\+]+$", package_name))
+
     @abstractmethod
     def is_available(self) -> bool:
         """Whether this package manager is installed and usable on the current host."""

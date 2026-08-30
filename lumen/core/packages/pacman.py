@@ -25,6 +25,19 @@ class PacmanBackend(BasePackageBackend):
     def backend_id(self) -> str:
         return "pacman"
 
+    @property
+    def capabilities(self) -> Dict[str, bool]:
+        return {
+            "supports_search": True,
+            "supports_installed": True,
+            "supports_updates": True,
+            "supports_install": True,
+            "supports_remove": True,
+            "supports_purge": True,
+            "supports_update": True,
+            "supports_details": False,
+        }
+
     def is_available(self) -> bool:
         return bool(shutil.which("pacman"))
 
@@ -137,6 +150,9 @@ class PacmanBackend(BasePackageBackend):
         return updates
 
     def install(self, package_name: str, on_progress: Optional[Callable[[str], None]] = None) -> PackageOperationResult:
+        if not self.is_valid_package_name(package_name):
+            return PackageOperationResult(success=False, message="Invalid package name characters", error_details="Security validation failed")
+
         if not self.is_available():
             return PackageOperationResult(success=False, message="Pacman is not available on this system")
 
@@ -168,6 +184,9 @@ class PacmanBackend(BasePackageBackend):
             return PackageOperationResult(success=False, message=f"Pacman install error: {e}", error_details=str(e))
 
     def remove(self, package_name: str, purge: bool = False, on_progress: Optional[Callable[[str], None]] = None) -> PackageOperationResult:
+        if not self.is_valid_package_name(package_name):
+            return PackageOperationResult(success=False, message="Invalid package name characters", error_details="Security validation failed")
+
         if not self.is_available():
             return PackageOperationResult(success=False, message="Pacman is not available on this system")
 

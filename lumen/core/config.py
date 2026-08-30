@@ -261,7 +261,7 @@ class LumenConfig:
     """Strongly typed application configuration."""
     config_dir: Optional[Path] = None
     config_version: int = CURRENT_CONFIG_VERSION
-    shortcut: str = "Meta+Space"
+    shortcut: str = "Alt+Space"
     theme: str = "auto"
     window_width: int = 680
     max_results: int = 9
@@ -271,8 +271,13 @@ class LumenConfig:
     animation_duration_ms: int = 120
     actions_dir: str = "~/.config/lumen/actions"
     enable_tray: bool = False
+    update_check_enabled: bool = True
+    update_check_interval_hours: int = 24
+    update_dismissed_version: str = ""
     providers: Dict[str, bool] = field(default_factory=lambda: {
         "applications": True,
+        "packages": True,
+        "updates": True,
         "commands": True,
         "actions": True,
         "system_actions": True,
@@ -370,6 +375,9 @@ class LumenConfig:
                 self.animation_duration_ms = int(data.get("animation_duration_ms", self.animation_duration_ms))
                 self.actions_dir = str(data.get("actions_dir", self.actions_dir))
                 self.enable_tray = bool(data.get("enable_tray", self.enable_tray))
+                self.update_check_enabled = bool(data.get("update_check_enabled", self.update_check_enabled))
+                self.update_check_interval_hours = int(data.get("update_check_interval_hours", self.update_check_interval_hours))
+                self.update_dismissed_version = str(data.get("update_dismissed_version", self.update_dismissed_version))
 
                 if "providers" in data and isinstance(data["providers"], dict):
                     self.providers.update(data["providers"])

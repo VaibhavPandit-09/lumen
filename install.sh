@@ -13,7 +13,7 @@ ICON_DIR="$DATA_DIR/icons/hicolor/scalable/apps"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/lumen"
 ACTIONS_DIR="$CONFIG_DIR/actions"
 
-TARGET_VERSION="$(python3 -c 'import lumen; print(lumen.__version__)' 2>/dev/null || echo '0.5.0')"
+TARGET_VERSION="$(python3 -c 'import lumen; print(lumen.__version__)' 2>/dev/null || echo '0.6.0')"
 
 # Parse CLI flags
 MODE="install"

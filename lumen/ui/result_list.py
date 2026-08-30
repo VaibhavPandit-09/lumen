@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PyQt6.QtCore import QPoint, QRect, QSize, Qt
+from PyQt6.QtCore import QPoint, QRect, QSize, Qt, QTimer
 from PyQt6.QtGui import (
     QColor,
     QFont,
@@ -161,6 +161,15 @@ class ResultListWidget(QListWidget):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setMouseTracking(True)
+        self._hover_guard_active = False
+
+    def activate_hover_guard(self) -> None:
+        """Suppresses mouse hover selection for 100ms after launcher open."""
+        self._hover_guard_active = True
+        QTimer.singleShot(100, self._release_hover_guard)
+
+    def _release_hover_guard(self) -> None:
+        self._hover_guard_active = False
 
     def select_next(self) -> None:
         count = self.count()
@@ -185,6 +194,9 @@ class ResultListWidget(QListWidget):
         return None
 
     def mouseMoveEvent(self, event):
+        if self._hover_guard_active:
+            super().mouseMoveEvent(event)
+            return
         item = self.itemAt(event.pos())
         if item:
             self.setCurrentItem(item)

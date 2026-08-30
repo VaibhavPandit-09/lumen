@@ -26,6 +26,19 @@ class AptBackend(BasePackageBackend):
     def backend_id(self) -> str:
         return "apt"
 
+    @property
+    def capabilities(self) -> Dict[str, bool]:
+        return {
+            "supports_search": True,
+            "supports_installed": True,
+            "supports_updates": True,
+            "supports_install": True,
+            "supports_remove": True,
+            "supports_purge": True,
+            "supports_update": True,
+            "supports_details": True,
+        }
+
     def is_available(self) -> bool:
         return bool(shutil.which("apt-cache") or shutil.which("dpkg"))
 

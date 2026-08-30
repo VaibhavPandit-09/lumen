@@ -66,17 +66,31 @@ class ActionDispatcher:
                     if on_progress:
                         on_progress(f"Running {item.title}...")
                     out = item.execute()
-                    res = DispatchResult(
-                        status=DispatchStatus.SUCCESS,
-                        message=payload.success_message or f"Completed: {item.title}",
-                        dismiss_window=True,
-                        output=out,
-                    )
+                    
+                    # Inspect operation result (e.g. PackageOperationResult or UpdateResult)
+                    if hasattr(out, "success") and not out.success:
+                        fail_msg = getattr(out, "message", "") or (payload.error_message if payload else "") or f"Failed: {item.title}"
+                        err_det = getattr(out, "error_details", None)
+                        res = DispatchResult(
+                            status=DispatchStatus.FAILED,
+                            message=fail_msg,
+                            error_details=err_det,
+                            dismiss_window=False,
+                            output=out,
+                        )
+                    else:
+                        succ_msg = (payload.success_message if payload else "") or (getattr(out, "message", "") if hasattr(out, "message") else "") or f"Completed: {item.title}"
+                        res = DispatchResult(
+                            status=DispatchStatus.SUCCESS,
+                            message=succ_msg,
+                            dismiss_window=True,
+                            output=out,
+                        )
                 except Exception as e:
                     error("Dispatcher", f"Async action failed: {e}")
                     res = DispatchResult(
                         status=DispatchStatus.FAILED,
-                        message=payload.error_message or f"Failed: {item.title}",
+                        message=(payload.error_message if payload else "") or f"Failed: {item.title}",
                         error_details=str(e),
                         dismiss_window=False,
                     )
@@ -94,6 +108,16 @@ class ActionDispatcher:
         # Synchronous execution
         try:
             out = item.execute()
+            if hasattr(out, "success") and not out.success:
+                fail_msg = getattr(out, "message", "") or f"Failed: {item.title}"
+                err_det = getattr(out, "error_details", None)
+                return DispatchResult(
+                    status=DispatchStatus.FAILED,
+                    message=fail_msg,
+                    error_details=err_det,
+                    dismiss_window=False,
+                    output=out,
+                )
             debug("Dispatcher", f"Executed action successfully: {item.title}")
             return DispatchResult(
                 status=DispatchStatus.SUCCESS,

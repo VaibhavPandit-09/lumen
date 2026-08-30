@@ -117,7 +117,23 @@ class FlatpakBackend(BasePackageBackend):
             debug("Flatpak", f"Check updates: {e}")
         return updates
 
+    @property
+    def capabilities(self) -> Dict[str, bool]:
+        return {
+            "supports_search": True,
+            "supports_installed": True,
+            "supports_updates": True,
+            "supports_install": True,
+            "supports_remove": True,
+            "supports_purge": True,
+            "supports_update": True,
+            "supports_details": False,
+        }
+
     def install(self, package_name: str, on_progress: Optional[Callable[[str], None]] = None) -> PackageOperationResult:
+        if not self.is_valid_package_name(package_name):
+            return PackageOperationResult(success=False, message="Invalid package name characters", error_details="Security validation failed")
+
         if not self.is_available():
             return PackageOperationResult(success=False, message="Flatpak is not installed on this system")
 
@@ -146,6 +162,9 @@ class FlatpakBackend(BasePackageBackend):
             return PackageOperationResult(success=False, message=f"Flatpak install error: {e}", error_details=str(e))
 
     def remove(self, package_name: str, purge: bool = False, on_progress: Optional[Callable[[str], None]] = None) -> PackageOperationResult:
+        if not self.is_valid_package_name(package_name):
+            return PackageOperationResult(success=False, message="Invalid package name characters", error_details="Security validation failed")
+
         if not self.is_available():
             return PackageOperationResult(success=False, message="Flatpak is not installed on this system")
 

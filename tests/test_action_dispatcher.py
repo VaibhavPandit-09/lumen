@@ -113,6 +113,57 @@ class TestActionDispatcher(unittest.TestCase):
         self.assertFalse(res.dismiss_window)
         self.assertIn("Network disconnected", res.error_details)
 
+    def test_sync_operation_result_failure(self):
+        """When an action returns an object with success=False, dispatcher must report FAILED."""
+        from lumen.core.packages.base import PackageOperationResult
+
+        def _failed_op():
+            return PackageOperationResult(success=False, message="Lock active", error_details="Locked")
+
+        item = SearchResult(
+            id="test:fail_op",
+            title="Failed Operation",
+            action=_failed_op,
+        )
+
+        res = ActionDispatcher.dispatch(item)
+        self.assertEqual(res.status, DispatchStatus.FAILED)
+        self.assertFalse(res.dismiss_window)
+        self.assertEqual(res.message, "Lock active")
+        self.assertEqual(res.error_details, "Locked")
+
+    def test_async_operation_result_failure(self):
+        """When an async action returns success=False, on_complete must receive FAILED status."""
+        from lumen.core.packages.base import PackageOperationResult
+        completed_results = []
+
+        def _async_failed_op():
+            return PackageOperationResult(success=False, message="APT error", error_details="Unmet deps")
+
+        payload = ActionPayload(
+            action_type=ActionType.PACKAGE_INSTALL,
+            target="broken-pkg",
+            handler=_async_failed_op,
+            is_async=True,
+            error_message="Custom error",
+        )
+        item = SearchResult(
+            id="test:async_fail",
+            title="Install Broken Package",
+            payload=payload,
+        )
+
+        ActionDispatcher.dispatch(
+            item=item,
+            on_complete=lambda r: completed_results.append(r),
+        )
+
+        time.sleep(0.1)
+        self.assertEqual(len(completed_results), 1)
+        self.assertEqual(completed_results[0].status, DispatchStatus.FAILED)
+        self.assertFalse(completed_results[0].dismiss_window)
+        self.assertEqual(completed_results[0].message, "APT error")
+
 
 if __name__ == "__main__":
     unittest.main()

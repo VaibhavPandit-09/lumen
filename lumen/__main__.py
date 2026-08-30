@@ -30,6 +30,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
     from lumen.providers.locations import LocationsProvider
     from lumen.providers.packages import PackagesProvider
     from lumen.providers.system_actions import SystemActionsProvider
+    from lumen.providers.updates import UpdatesProvider
 
     config = LumenConfig().load()
     providers = [
@@ -40,6 +41,7 @@ def cli_search(query: str, as_json: bool = False) -> None:
         CommandProvider(commands=config.commands, enabled=config.providers.get("commands", True)),
         ApplicationProvider(hidden_applications=config.hidden_applications, enabled=config.providers.get("applications", True)),
         PackagesProvider(enabled=config.providers.get("packages", True)),
+        UpdatesProvider(enabled=config.providers.get("updates", True)),
         SystemActionsProvider(enabled=config.providers.get("system_actions", True)),
         LocationsProvider(enabled=config.providers.get("locations", True)),
         KRunnerProvider(enabled=config.providers.get("krunner", True)),
@@ -160,8 +162,10 @@ def main() -> None:
     pkg_up_p.add_argument("--json", action="store_true")
 
     # Update CLI
-    update_p = subparsers.add_parser("update", help="Update all software packages across active backends")
-    update_p.add_argument("--json", action="store_true")
+    update_p = subparsers.add_parser("update", help="Update software packages or Lumen itself")
+    update_p.add_argument("--self", dest="self_update", action="store_true", help="Self-update Lumen to the latest GitHub release")
+    update_p.add_argument("--check", action="store_true", help="Check for available Lumen updates")
+    update_p.add_argument("--json", action="store_true", help="Output update status as JSON")
 
     # Version CLI
     version_p = subparsers.add_parser("version", help="Display version and system build information")
@@ -270,6 +274,35 @@ def main() -> None:
             sys.exit(0)
 
     elif args.subcommand == "update":
+        if getattr(args, "self_update", False):
+            from lumen.core.updater.checker import UpdateChecker
+            from lumen.core.updater.installer import SelfUpdater
+            checker = UpdateChecker()
+            info = checker.check_for_update(force=True)
+            if not info or not info.update_available:
+                print(f"Lumen is already up to date (v{__version__}).")
+                sys.exit(0)
+            print(f"Updating Lumen v{__version__} -> v{info.latest_version}...")
+            updater = SelfUpdater()
+            res = updater.update(info, on_progress=lambda msg: print(f"  • {msg}"))
+            print(res.message)
+            sys.exit(0 if res.success else 1)
+
+        elif getattr(args, "check", False):
+            from lumen.core.updater.checker import UpdateChecker
+            checker = UpdateChecker()
+            info = checker.check_for_update(force=True)
+            if args.json:
+                import dataclasses
+                print(json.dumps(dataclasses.asdict(info) if info else {}, indent=2))
+            else:
+                if info and info.update_available:
+                    print(f"Update available: Lumen v{info.latest_version} (current: v{__version__})")
+                    print(f"Release URL: {info.release_url}")
+                else:
+                    print(f"Lumen is up to date (v{__version__}).")
+            sys.exit(0)
+
         from lumen.core.packages.manager import PackageManager
         pkg_mgr = PackageManager.get_instance()
         results = pkg_mgr.update_all()

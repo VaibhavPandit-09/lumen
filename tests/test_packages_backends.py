@@ -112,6 +112,30 @@ class TestPackageBackends(unittest.TestCase):
         self.assertFalse(res.success)
         self.assertIn("Invalid package name", res.message)
 
+        flatpak = FlatpakBackend()
+        res_fp = flatpak.install("org.app; rm -rf /")
+        self.assertFalse(res_fp.success)
+        self.assertIn("Invalid package name", res_fp.message)
+
+        snap = SnapBackend()
+        res_snap = snap.install("pkg $(whoami)")
+        self.assertFalse(res_snap.success)
+        self.assertIn("Invalid package name", res_snap.message)
+
+        pacman = PacmanBackend()
+        res_pac = pacman.install("pkg`id`")
+        self.assertFalse(res_pac.success)
+        self.assertIn("Invalid package name", res_pac.message)
+
+    def test_backend_capabilities(self):
+        apt = AptBackend()
+        self.assertTrue(apt.capabilities["supports_purge"])
+        self.assertTrue(apt.capabilities["supports_details"])
+
+        flatpak = FlatpakBackend()
+        self.assertTrue(flatpak.capabilities["supports_purge"])
+        self.assertFalse(flatpak.capabilities["supports_details"])
+
 
 class TestPackageManager(unittest.TestCase):
     """Tests aggregation and concurrency lock of PackageManager."""
