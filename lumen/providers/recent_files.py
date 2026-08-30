@@ -46,7 +46,7 @@ class RecentFilesProvider(BaseProvider):
         self.refresh()
 
     def refresh(self) -> None:
-        """Parses ~/.local/share/recently-used.xbel."""
+        """Parses ~/.local/share/recently-used.xbel with robust error handling."""
         xbel_path = Path.home() / ".local" / "share" / "recently-used.xbel"
         if not xbel_path.exists():
             self.cached_files = []
@@ -59,41 +59,44 @@ class RecentFilesProvider(BaseProvider):
 
             # Iterate over <bookmark> elements (most recent last or first)
             for bookmark in root.findall(".//bookmark"):
-                href = bookmark.get("href", "")
-                if not href.startswith("file://"):
-                    continue
+                try:
+                    href = bookmark.get("href", "")
+                    if not href.startswith("file://"):
+                        continue
 
-                decoded_path = urllib.parse.unquote(href[7:])
-                file_path = Path(decoded_path)
+                    decoded_path = urllib.parse.unquote(href[7:])
+                    file_path = Path(decoded_path)
 
-                if not file_path.exists():
-                    continue
+                    if not file_path.exists() or file_path.is_dir():
+                        continue
 
-                file_name = file_path.name
-                if not file_name:
-                    continue
+                    file_name = file_path.name
+                    if not file_name:
+                        continue
 
-                # Find mime-type
-                mime_type = ""
-                mime_elem = bookmark.find(".//{http://www.freedesktop.org/standards/shared-mime-info}mime-type")
-                if mime_elem is not None:
-                    mime_type = mime_elem.get("type", "")
+                    # Find mime-type
+                    mime_type = ""
+                    mime_elem = bookmark.find(".//{http://www.freedesktop.org/standards/shared-mime-info}mime-type")
+                    if mime_elem is not None:
+                        mime_type = mime_elem.get("type", "")
 
-                icon_name = get_icon_for_mimetype(mime_type)
+                    icon_name = get_icon_for_mimetype(mime_type)
 
-                results.append(
-                    SearchResult(
-                        id=f"recent:{decoded_path}",
-                        title=file_name,
-                        subtitle=str(file_path.parent),
-                        category=ItemCategory.RECENT.value,
-                        icon_name=icon_name,
-                        action=lambda p=decoded_path: open_path_or_url(p),
-                        badge="Recent",
-                        keywords=["recent", "file", file_name, file_path.suffix.lstrip(".")],
-                        context={"path": decoded_path, "mime": mime_type},
+                    results.append(
+                        SearchResult(
+                            id=f"recent:{decoded_path}",
+                            title=file_name,
+                            subtitle=str(file_path.parent),
+                            category=ItemCategory.RECENT.value,
+                            icon_name=icon_name,
+                            action=lambda p=decoded_path: open_path_or_url(p),
+                            badge="Recent",
+                            keywords=["recent", "file", file_name, file_path.suffix.lstrip(".")],
+                            context={"path": decoded_path, "mime": mime_type},
+                        )
                     )
-                )
+                except Exception:
+                    continue
 
             # Reverse so most recent appear first
             self.cached_files = list(reversed(results))[:50]
